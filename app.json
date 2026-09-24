@@ -1,0 +1,80 @@
+{
+  "expo": {
+    "name": "TillCount",
+    "slug": "tillcount",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F3E8"
+    },
+    "ios": {
+      "bundleIdentifier": "com.tillcount.app",
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "TillCount uses the camera to scan product barcodes while you count stock."
+      }
+    },
+    "android": {
+      "package": "com.tillcount.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A2540"
+      },
+      "versionCode": 1,
+      "allowBackup": false,
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "com.google.android.gms.permission.AD_ID"
+      ]
+    },
+    "plugins": [
+      "expo-localization",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "TillCount uses the camera to scan product barcodes while you count stock.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      "expo-document-picker",
+      "./plugins/asyncStorageSize"
+    ],
+    "locales": {
+      "en": "./native-locales/en.json",
+      "ar": "./native-locales/ar.json",
+      "tr": "./native-locales/tr.json",
+      "fr": "./native-locales/fr.json",
+      "es": "./native-locales/es.json",
+      "de": "./native-locales/de.json"
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    },
+    "scheme": "tillcount"
+  }
+}

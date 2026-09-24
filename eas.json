@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "appVersionSource": "local"
+  },
+  "build": {
+    "production": {
+      "channel": "production",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_APP_VARIANT": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "distribution": "store"
+      }
+    },
+    "review": {
+      "distribution": "internal",
+      "channel": "review",
+      "env": {
+        "APP_VARIANT": "review",
+        "EXPO_PUBLIC_APP_VARIANT": "review",
+        "EXPO_PUBLIC_BILLING_BYPASS": "1"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
