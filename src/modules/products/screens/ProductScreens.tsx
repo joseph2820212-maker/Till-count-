@@ -21,7 +21,7 @@ import { makeBarcode, type ProductError } from '../../../domain/productRules';
 import { packUnitsOf, parseQuantityText } from '../../../domain/quantity';
 import { newId } from '../../../domain/ids';
 import { BARCODE_ROLES, COUNT_UNITS, type BarcodeRole, type CountUnit, type Product } from '../../../domain/types';
-import { formatInt, formatMoney, formatQty, ltr, relativeDay, unitLabel } from '../../../utils/format';
+import { dot, formatInt, formatMoney, formatQty, ltr, relativeDay, unitLabel } from '../../../utils/format';
 import { parseStrictAmount } from '../../../utils/safeParse';
 import { useNav, useParams } from '../../../navigation/nav';
 import { useProGate } from '../../billing/useProGate';
@@ -86,7 +86,7 @@ export const ProductsScreen: React.FC = () => {
           <View style={{ gap: GAP }}>
             <SearchField value={query} onChangeText={setQuery} placeholder={t('products.searchPlaceholder')} testID="products-search" />
             {total > 0 ? (
-              <Card tone="info" title={t('products.count', { count: total, n: formatInt(total) })} body={t('products.summary', { categories: formatInt(categories), suppliers: formatInt(suppliers) })} onPress={() => nav.navigate('Categories')} testID="products-summary" />
+              <Card tone="info" title={t('products.count', { count: total, n: formatInt(total) })} body={[t('plural.categories', { count: categories, n: formatInt(categories) }), t('plural.suppliers', { count: suppliers, n: formatInt(suppliers) })].join(dot())} onPress={() => nav.navigate('Categories')} testID="products-summary" />
             ) : null}
             {filter || archived ? (
               <ChipRow>
@@ -118,7 +118,7 @@ export const ProductsScreen: React.FC = () => {
             item.sellingPrice !== undefined ? formatMoney(item.sellingPrice) : undefined,
             snap ? t('products.counted', { qty: formatQty(snap.quantityBase, item.countUnit) }) : t('status.notCounted'),
           ].filter(Boolean);
-          return <ListRow title={item.name} subtitle={bits.join(' · ')} onPress={() => nav.navigate('ProductDetail', { productId: item.id })} testID={`product-${item.id}`} />;
+          return <ListRow title={item.name} subtitle={bits.join(dot())} onPress={() => nav.navigate('ProductDetail', { productId: item.id })} testID={`product-${item.id}`} />;
         }}
       />
       <OverflowMenu
@@ -153,11 +153,11 @@ export const ProductDetailScreen: React.FC = () => {
   if (!product) {
     return <Screen title={t('screens.ProductDetail')} onBack={() => nav.goBack()} testID="screen-ProductDetail"><StateCard tone="info" title={t('errors.notFoundTitle')} body={t('products.deleted')} /></Screen>;
   }
-  const codes = product.barcodes.map(b => `${t(`barcodes.role.${b.role}`)} ${ltr(b.code)}`).join(' · ');
+  const codes = product.barcodes.map(b => `${t(`barcodes.role.${b.role}`)} ${ltr(b.code)}`).join(dot());
   const caseUnits = packUnitsOf(product, 'case');
   const packUnits = packUnitsOf(product, 'pack');
   const reorderLine = product.reorderLevel !== undefined || product.targetStock !== undefined
-    ? [product.reorderLevel !== undefined ? t('products.lowAt', { n: formatQty(product.reorderLevel, product.countUnit) }) : null, product.targetStock !== undefined ? t('products.target', { n: formatQty(product.targetStock, product.countUnit) }) : null].filter(Boolean).join(' · ')
+    ? [product.reorderLevel !== undefined ? t('products.lowAt', { n: formatQty(product.reorderLevel, product.countUnit) }) : null, product.targetStock !== undefined ? t('products.target', { n: formatQty(product.targetStock, product.countUnit) }) : null].filter(Boolean).join(dot())
     : t('products.noReorder');
   const archived = product.status === 'archived';
 
@@ -178,7 +178,7 @@ export const ProductDetailScreen: React.FC = () => {
       {archived ? <Card tone="danger" title={t('products.archivedTitle')} body={t('products.archivedBody')} /> : null}
       <Card
         tone={snap ? 'success' : 'info'}
-        title={snap ? t('products.countedTitle', { qty: formatQty(snap.quantityBase, product.countUnit), unit: product.countUnit === 'each' ? '' : unitLabel(product.countUnit) }).trim() : t('status.notCounted')}
+        title={snap ? t('products.countedTitle', { qty: formatQty(snap.quantityBase, product.countUnit), unit: product.countUnit === 'each' ? '' : unitLabel(product.countUnit) }).replace(/\s{2,}/g, ' ').trim() : t('status.notCounted')}
         body={snap ? t('products.lastCounted', { day: relativeDay(snap.countedAt), scope: session?.scopeLabel ?? t('scope.everything') }) : t('products.neverCounted')}
         testID="product-count-card"
       />
@@ -187,9 +187,9 @@ export const ProductDetailScreen: React.FC = () => {
       <ListRow title={t('fields.supplier')} subtitle={(product.supplierId && lookups.suppliers.get(product.supplierId)?.name) || t('reorder.noSupplier')} onPress={() => nav.navigate('EditProduct', { productId })} />
       <ListRow title={t('fields.location')} subtitle={(product.locationId && lookups.locations.get(product.locationId)?.name) || t('products.noLocation')} onPress={() => nav.navigate('EditProduct', { productId })} />
       <ListRow title={t('products.reorder')} subtitle={reorderLine} onPress={() => nav.navigate('EditReorderTarget', { productId })} testID="detail-reorder" />
-      <ListRow title={t('products.packCase')} subtitle={caseUnits || packUnits ? [caseUnits ? t('products.perCase', { n: formatInt(caseUnits) }) : null, packUnits ? t('products.perPack', { n: formatInt(packUnits) }) : null].filter(Boolean).join(' · ') : t('products.noPackCase')} onPress={() => nav.navigate('Barcodes', { productId })} />
+      <ListRow title={t('products.packCase')} subtitle={caseUnits || packUnits ? [caseUnits ? t('products.perCase', { n: formatInt(caseUnits) }) : null, packUnits ? t('products.perPack', { n: formatInt(packUnits) }) : null].filter(Boolean).join(dot()) : t('products.noPackCase')} onPress={() => nav.navigate('Barcodes', { productId })} />
       {product.costPrice !== undefined || product.sellingPrice !== undefined ? (
-        <ListRow title={t('products.prices')} subtitle={[product.costPrice !== undefined ? t('products.costLine', { v: formatMoney(product.costPrice) }) : null, product.sellingPrice !== undefined ? t('products.priceLine', { v: formatMoney(product.sellingPrice) }) : null].filter(Boolean).join(' · ')} onPress={() => nav.navigate('EditProduct', { productId })} />
+        <ListRow title={t('products.prices')} subtitle={[product.costPrice !== undefined ? t('products.costLine', { v: formatMoney(product.costPrice) }) : null, product.sellingPrice !== undefined ? t('products.priceLine', { v: formatMoney(product.sellingPrice) }) : null].filter(Boolean).join(dot())} onPress={() => nav.navigate('EditProduct', { productId })} />
       ) : null}
       <OverflowMenu
         visible={menu}
@@ -395,7 +395,8 @@ export const AddBarcodeScreen: React.FC = () => {
       <SectionTitle>{t('barcodes.newTitle')}</SectionTitle>
       <ActionField label={t('fields.barcode')} value={code} placeholder={t('products.scanOrType')} onPress={() => setCapture(true)} testID="barcode-code" ltr />
       <SelectField label={t('barcodes.roleLabel')} value={role} onChange={v => { setRole(v); if (v === 'single') setUnits('1'); }} options={BARCODE_ROLES.map(r => ({ value: r, label: t(`barcodes.role.${r}`) }))} testID="barcode-role" />
-      {role !== 'single' ? <TextField label={t('barcodes.unitsLabel')} value={units} onChangeText={setUnits} keyboardType="number-pad" testID="barcode-units" /> : null}
+      {/* Figma always shows the units field; a single-unit barcode is fixed at 1. */}
+      <TextField label={t('barcodes.unitsLabel')} value={role === 'single' ? '1' : units} onChangeText={setUnits} keyboardType="number-pad" editable={role !== 'single'} testID="barcode-units" />
       {error ? <Card tone="danger" title={t('products.errors.title')} body={error} testID="barcode-error" /> : null}
       <Card tone="info" title={t('barcodes.duplicateTitle')} body={t('barcodes.duplicateBody')} />
       <BarcodeCapture visible={capture} onClose={() => setCapture(false)} onCapture={(c, sym) => { setCode(c); setSymbology(sym); setCapture(false); setError(null); }} />

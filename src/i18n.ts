@@ -289,7 +289,11 @@ i18n
     lng: 'en',
     fallbackLng: 'en',
     interpolation: {
-      escapeValue: false,
+      // Not HTML escaping: in Arabic each interpolated value (a product, supplier or
+      // location name, a number) is closed with a RIGHT-TO-LEFT MARK, so the separators
+      // and words after it follow the RTL line instead of joining a Latin run.
+      escapeValue: true,
+      escape: (value: string) => (i18n.language === 'ar' ? `${value}\u200F` : value),
     },
     compatibilityJSON: 'v4',
   });

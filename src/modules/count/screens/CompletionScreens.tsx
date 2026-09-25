@@ -15,19 +15,15 @@ import { tc } from '../../../theme/colors';
 import { useAppState, loadFullSession } from '../../../state/store';
 import { useCompletedSessions, useOpenProgress, useActiveNamed } from '../../../state/selectors';
 import { deleteFavourite, finishCount, saveFavourite } from '../../../state/actions';
-import { resolveScope, uncountedIds } from '../../../domain/countEngine';
+import { resolveScope, uncountedIds, unitsOf } from '../../../domain/countEngine';
 import { reorderStatus } from '../../../domain/reorderEngine';
 import { sessionStockValue } from '../../../domain/stockValue';
 import type { CountMode, CountScopeType, CountSession, FavouriteCount } from '../../../domain/types';
-import { formatDate, formatDayMonth, formatInt, formatMoney, formatQty, formatTime, relativeDay, unitLabel } from '../../../utils/format';
+import { dot, formatDate, formatDayMonth, formatInt, formatMoney, formatQty, formatTime, relativeDay, unitLabel } from '../../../utils/format';
 import { goTab, useNav, useParams } from '../../../navigation/nav';
 import { scopeTitle } from '../scopeLabel';
 import { useProGate } from '../../billing/useProGate';
 
-/** Units = the sum of "each" quantities (measured quantities are not units). */
-function unitsOf(entries: CountSession['entries']): number {
-  return entries.reduce((n, e) => (e.countUnit === 'each' ? n + e.quantityBase : n), 0);
-}
 
 // ─── 05 Review ───────────────────────────────────────────────────────────────
 
@@ -183,8 +179,8 @@ export const CountHistoryScreen: React.FC = () => {
         )}
         renderItem={({ item }) => (
           <ListRow
-            title={`${scopeTitle(item)} · ${relativeDay(item.completedAt)}`}
-            subtitle={t('history.rowSummary', { products: formatInt(item.entryCount) })}
+            title={`${scopeTitle(item)}${dot()}${relativeDay(item.completedAt)}`}
+            subtitle={item.unitsTotal === undefined ? t('history.rowSummary', { products: formatInt(item.entryCount) }) : t('history.rowSummaryUnits', { products: formatInt(item.entryCount), units: formatInt(item.unitsTotal) })}
             onPress={() => nav.navigate('HistoryDetail', { sessionId: item.id })}
             testID={`history-${item.id}`}
           />
@@ -223,7 +219,7 @@ export const HistoryDetailScreen: React.FC = () => {
         contentContainerStyle={{ gap: GAP, paddingBottom: GUTTER }}
         ListHeaderComponent={(
           <View style={{ gap: GAP }}>
-            <SectionTitle>{`${scopeTitle(session)} · ${formatDayMonth(session.completedAt)}`}</SectionTitle>
+            <SectionTitle>{`${scopeTitle(session)}${dot()}${formatDayMonth(session.completedAt)}`}</SectionTitle>
             <MetricRow>
               <MetricCard label={t('history.products')} value={formatInt(session.entries.length)} />
               <MetricCard label={t('history.units')} value={formatInt(unitsOf(session.entries))} />
@@ -237,7 +233,7 @@ export const HistoryDetailScreen: React.FC = () => {
           <ListRow
             title={item.productName}
             subtitle={item.countUnit === 'each' ? t('history.units_n', { count: item.quantityBase, n: formatQty(item.quantityBase, 'each') }) : `${formatQty(item.quantityBase, item.countUnit)} ${unitLabel(item.countUnit)}`}
-            chevron={false}
+            onPress={() => nav.navigate('ProductDetail', { productId: item.productId })}
             testID={`history-entry-${item.productId}`}
           />
         )}
@@ -328,7 +324,7 @@ export const EditFavouriteScreen: React.FC = () => {
         <SelectField label={t(`scope.${type}`)} value={refId || undefined} onChange={setRefId} options={refOptions} placeholder={t('favourites.choose')} testID="favourite-ref" />
       ) : null}
       <SelectField label={t('favourites.mode')} value={mode} onChange={setMode} options={[{ value: 'scan', label: t('setup.scanTitle') }, { value: 'list', label: t('setup.listTitle') }]} testID="favourite-mode" />
-      <Card tone="info" title={t('favourites.included')} body={t('favourites.includedLine', { count: included, n: formatInt(included) })} />
+      <Card title={t('favourites.included')} body={t('favourites.includedLine', { count: included, n: formatInt(included) })} />
       <StateDialog
         visible={confirm}
         tone="danger"

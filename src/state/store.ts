@@ -6,7 +6,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { buildCatalogIndex, type CatalogIndex } from '../domain/catalogIndex';
-import type { Lookups } from '../domain/countEngine';
+import { unitsOf, type Lookups } from '../domain/countEngine';
 import {
   DEFAULT_SETTINGS,
   type AppSettings, type Category, type CountEntry, type CountSession, type FavouriteCount, type OnboardingState,
@@ -89,7 +89,7 @@ export function resetStoreForTests(): void {
 
 export function headerOf(session: CountSession): CountSessionHeader {
   const { entries, ...rest } = session;
-  return { ...rest, entryCount: entries.length };
+  return { ...rest, entryCount: entries.length, unitsTotal: unitsOf(entries) };
 }
 
 function sortSessions(list: CountSessionHeader[]): CountSessionHeader[] {
@@ -118,7 +118,7 @@ export async function loadStore(): Promise<void> {
       // Only one open count is ever created; if an older build left two, keep the newest open.
       const h = sortSessions(openHeaders)[0];
       const entries = await readCollection(countEntriesKey(h.id), isCountEntry);
-      const { entryCount: _n, ...rest } = h;
+      const { entryCount: _n, unitsTotal: _u, ...rest } = h;
       openSession = { ...rest, entries };
     }
     setState({
@@ -224,7 +224,7 @@ export async function loadFullSession(sessionId: string): Promise<CountSession |
   const h = state.sessions.find(s => s.id === sessionId);
   if (!h) return null;
   const entries = await loadSessionEntries(sessionId);
-  const { entryCount: _n, ...rest } = h;
+  const { entryCount: _n, unitsTotal: _u, ...rest } = h;
   return { ...rest, entries };
 }
 

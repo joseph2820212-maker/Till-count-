@@ -12,6 +12,14 @@ import { useBilling } from '../BillingProvider';
 import { BILLING_PACKAGE_IDS, isLifetimeProductId } from '../billingConfig';
 import { isBypassActive } from '../bypass';
 import { useTier } from '../useTier';
+import { LIMIT_CAPS, type LimitKind } from '../limits';
+import { formatInt } from '../../../utils/format';
+
+/** The Free cap behind a limit reason (0 for Pro-only features). */
+function capOf(reason: string): number {
+  const cap = LIMIT_CAPS[reason as LimitKind];
+  return typeof cap === 'number' ? cap : 0;
+}
 
 const FEATURES = ['catalogue', 'history', 'reports', 'reorder', 'transfer'] as const;
 
@@ -49,7 +57,7 @@ export const ProScreen: React.FC = () => {
       )}
     >
       <Text style={s.heading}>{t('pro.heading')}</Text>
-      {params?.reason ? <Card tone="default" body={t(`states.freeLimit.body.${params.reason}`, { n: '' })} /> : null}
+      {params?.reason ? <Card tone="default" body={t(`states.freeLimit.body.${params.reason}`, { n: formatInt(capOf(params.reason)) })} /> : null}
       <Card tone="info" title={t('pro.oneTime')} body={t('pro.oneTimeBody')} />
       {FEATURES.map(f => (
         <View key={f} style={s.feature} accessible accessibilityLabel={t(`pro.feature.${f}`)}>
@@ -99,7 +107,7 @@ export const RestorePurchaseScreen: React.FC = () => {
 
 const s = StyleSheet.create({
   heading: { ...tcType.screenTitle, color: tc.textPrimary },
-  feature: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 28 },
+  feature: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 18 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tc.accent },
   featureText: { ...tcType.body, color: tc.textPrimary, flex: 1 },
 });

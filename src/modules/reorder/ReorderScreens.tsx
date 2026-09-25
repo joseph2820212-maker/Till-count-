@@ -15,7 +15,7 @@ import { setReorderTarget } from '../../state/actions';
 import { suggestedOrder, type ReorderLine } from '../../domain/reorderEngine';
 import { parseQuantityText, validateQuantity } from '../../domain/quantity';
 import { NO_SUPPLIER_ID } from '../../domain/countEngine';
-import { formatInt, formatQty, relativeDay, formatTime, unitLabel } from '../../utils/format';
+import { dot, formatInt, formatQty, formatTime, relativeDay, unitLabel } from '../../utils/format';
 import { goTab, useNav, useParams } from '../../navigation/nav';
 import { useProGate } from '../billing/useProGate';
 
@@ -38,7 +38,7 @@ const OrderRow: React.FC<{ line: ReorderLine; onPress: () => void }> = ({ line, 
   const meta = [
     t('reorder.countLine', { n: formatQty(line.latestQuantity, unit) }),
     line.product.targetStock !== undefined ? t('reorder.targetLine', { n: formatQty(line.product.targetStock, unit) }) : t('reorder.noTarget'),
-  ].join(' · ');
+  ].join(dot());
   const order = !showSuggestion ? '—' : line.suggestedOrder !== null ? formatQty(line.suggestedOrder, unit) : t('reorder.setTarget');
   return (
     <TouchableOpacity
@@ -65,12 +65,12 @@ const OrderRow: React.FC<{ line: ReorderLine; onPress: () => void }> = ({ line, 
 
 type Row = { kind: 'label'; text: string } | { kind: 'line'; line: ReorderLine };
 
-function sectioned(lines: ReorderLine[], t: (k: string) => string): Row[] {
+function sectioned(lines: ReorderLine[], t: (k: string) => string, labels = true): Row[] {
   const out = lines.filter(l => l.status === 'out').sort((a, b) => a.product.name.localeCompare(b.product.name));
   const low = lines.filter(l => l.status === 'low').sort((a, b) => a.product.name.localeCompare(b.product.name));
   return [
-    ...(out.length ? [{ kind: 'label' as const, text: t('reorder.sectionOut') }, ...out.map(line => ({ kind: 'line' as const, line }))] : []),
-    ...(low.length ? [{ kind: 'label' as const, text: t('reorder.sectionLow') }, ...low.map(line => ({ kind: 'line' as const, line }))] : []),
+    ...(out.length && labels ? [{ kind: 'label' as const, text: t('reorder.sectionOut') }] : []), ...out.map(line => ({ kind: 'line' as const, line })),
+    ...(low.length && labels ? [{ kind: 'label' as const, text: t('reorder.sectionLow') }] : []), ...low.map(line => ({ kind: 'line' as const, line })),
   ];
 }
 
@@ -157,7 +157,8 @@ export const SupplierReorderScreen: React.FC = () => {
   const lookups = useAppState(s => s.lookups);
   const all = useVisibleAttention();
   const lines = useMemo(() => all.filter(l => supplierKey(l, lookups.suppliers) === (supplierId ?? NO_SUPPLIER_ID)), [all, lookups, supplierId]);
-  const rows = useMemo(() => sectioned(lines, t), [lines, t]);
+  // One flat list, out of stock first (Figma): each row's badge already names its status.
+  const rows = useMemo(() => sectioned(lines, t, false), [lines, t]);
   const name = supplierId && supplierId !== NO_SUPPLIER_ID ? lookups.suppliers.get(supplierId)?.name ?? '' : t('reorder.noSupplier');
   const gate = useProGate();
   const outN = lines.filter(l => l.status === 'out').length;
@@ -205,6 +206,8 @@ export const EditReorderTargetScreen: React.FC = () => {
   const parse = (s: string) => (s.trim() ? parseQuantityText(s) : undefined);
   const lv = parse(level); const tg = parse(target);
   const suggestion = tg === null || tg === undefined ? null : suggestedOrder(snap?.quantityBase ?? null, tg, unit);
+  /** "8 units" for counted items (Figma), "3.4 kg" for measured ones. */
+  const qtyText = (q: number) => (unit === 'each' ? t('history.units_n', { count: q, n: formatQty(q, unit) }) : `${formatQty(q, unit)} ${unitLabel(unit)}`);
 
   const save = async () => {
     const e: typeof errors = {};
@@ -231,11 +234,10 @@ export const EditReorderTargetScreen: React.FC = () => {
       )}
     >
       <SectionTitle>{product.name}</SectionTitle>
-      <Card tone="info" title={t('target.lastCounted')} body={snap ? t('target.lastCountedLine', { qty: formatQty(snap.quantityBase, unit), unit: unitLabel(unit), day: relativeDay(snap.countedAt), time: formatTime(snap.countedAt) }) : t('products.neverCounted')} />
+      <Card tone="info" title={t('target.lastCounted')} body={snap ? t('target.lastCountedLine', { qty: qtyText(snap.quantityBase), unit: '', day: relativeDay(snap.countedAt), time: formatTime(snap.countedAt) }).replace(/\s{2,}/g, ' ') : t('products.neverCounted')} />
       <TextField label={t('target.level')} value={level} onChangeText={setLevel} keyboardType={unit === 'each' ? 'number-pad' : 'decimal-pad'} error={errors.level} testID="target-level" placeholder={t('common.optional')} />
       <TextField label={t('fields.targetStock')} value={target} onChangeText={setTarget} keyboardType={unit === 'each' ? 'number-pad' : 'decimal-pad'} error={errors.target} testID="target-target" placeholder={t('common.optional')} />
-      <Card tone="success" title={t('target.suggested')} body={suggestion !== null ? `${formatQty(suggestion, unit)} ${unitLabel(unit)}` : snap ? t('target.needsTarget') : t('target.needsCount')} testID="target-suggestion" />
-      <Card tone="info" body={t('target.formula')} />
+      <Card tone="success" title={t('target.suggested')} body={suggestion !== null ? qtyText(suggestion) : snap ? t('target.needsTarget') : t('target.needsCount')} testID="target-suggestion" />
     </Screen>
   );
 };

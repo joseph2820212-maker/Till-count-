@@ -3,7 +3,7 @@
  * 39 CSV preview (25:917) · 45 Family export (26:983)
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Text } from '../../../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { AppButton } from '../../../components/AppButton';
@@ -15,7 +15,7 @@ import { useCompletedSessions, useReorder } from '../../../state/selectors';
 import { needsReorder } from '../../../domain/reorderEngine';
 import { NO_SUPPLIER_ID } from '../../../domain/countEngine';
 import type { CountSession } from '../../../domain/types';
-import { formatInt, ltr } from '../../../utils/format';
+import { dot, formatInt, ltr } from '../../../utils/format';
 import { logError } from '../../../utils/errorLog';
 import { useNav, useParams } from '../../../navigation/nav';
 import { scopeTitle } from '../../count/scopeLabel';
@@ -62,16 +62,31 @@ export const ExportCentreScreen: React.FC = () => {
   );
 };
 
-/** Figma PDF page mock (330 × 470 card) rendering the same data the PDF is built from. */
-const PageMock: React.FC<{ lines: { text: string; style: 'mast' | 'title' | 'faint' | 'body' | 'gap' }[] }> = ({ lines }) => (
-  <View style={s.page} accessible accessibilityRole="summary">
-    <ScrollView nestedScrollEnabled contentContainerStyle={{ gap: 4 }}>
-      {lines.map((l, i) => l.style === 'gap' ? <View key={i} style={{ height: 8 }} /> : (
-        <Text key={i} style={l.style === 'mast' ? s.mast : l.style === 'title' ? s.pageTitle : l.style === 'faint' ? s.faint : s.pageBody}>{l.text}</Text>
-      ))}
-    </ScrollView>
-  </View>
-);
+type PageLine = { text: string; style: 'mast' | 'title' | 'faint' | 'body' | 'row' | 'gap' };
+
+/** Rows that fit the page card; the rest are summarised as "+N more" (the PDF has them all). */
+const PAGE_ROWS = 11;
+
+/**
+ * Figma PDF page mock (330 × 470 card) rendering the same data the PDF is built from.
+ * `footer` lines sit at the bottom of the page, like the printed page's closing note.
+ */
+const PageMock: React.FC<{ lines: PageLine[]; footer?: PageLine[] }> = ({ lines, footer = [] }) => {
+  const line = (l: PageLine, i: number) => (l.style === 'gap' ? <View key={i} style={s.gap} /> : (
+    <Text key={i} numberOfLines={l.style === 'row' ? 1 : undefined} style={l.style === 'mast' ? s.mast : l.style === 'title' ? s.pageTitle : l.style === 'faint' ? s.faint : l.style === 'row' ? s.pageRow : s.pageBody}>{l.text}</Text>
+  ));
+  return (
+    <View style={s.page} accessible accessibilityRole="summary">
+      <View style={s.pageLines}>{lines.map(line)}</View>
+      {footer.length ? <View style={s.pageFooter}>{footer.map(line)}</View> : null}
+    </View>
+  );
+};
+
+/** First PAGE_ROWS rows, then a "+N more rows in the PDF" line. */
+function capRows(rows: PageLine[], more: (n: number) => string): PageLine[] {
+  return rows.length <= PAGE_ROWS ? rows : [...rows.slice(0, PAGE_ROWS - 1), { text: more(rows.length - (PAGE_ROWS - 1)), style: 'faint' }];
+}
 
 function dots(name: string, qty: string): string {
   const width = 26;
@@ -103,8 +118,7 @@ export const CountPdfPreviewScreen: React.FC = () => {
         { text: t('pdf.lowOut', { low: formatInt(data.low), out: formatInt(data.out) }), style: 'body' },
         { text: t('pdf.stockValue', { value: data.stockValue }), style: 'body' },
         { text: '', style: 'gap' },
-        ...data.lines.slice(0, 60).map(l => ({ text: dots(l.name, l.qty), style: 'body' as const })),
-        ...(data.lines.length > 60 ? [{ text: t('pdf.moreLines', { n: formatInt(data.lines.length - 60) }), style: 'faint' as const }] : []),
+        ...capRows(data.lines.map(l => ({ text: dots(l.name, l.qty), style: 'row' as const })), n => t('pdf.moreLines', { n: formatInt(n) })),
       ]} />
       <ExportProblem visible={action.failed} onRetry={action.go} />
     </Screen>
@@ -133,7 +147,7 @@ export const ReorderPdfPreviewScreen: React.FC = () => {
   const { lines, label, suppliers } = useReorderScope(params?.supplierId);
   const data = useMemo(() => reorderReportData(lines, suppliers, label), [lines, suppliers, label]);
   const action = useExportAction(async () => { await exportPdf(`TillCount_Reorder_${csvFileStamp()}`, reorderReportHtml(data), t('export.reorderPdf')); });
-  const flat = data.groups.flatMap(g => [...(data.groups.length > 1 ? [{ text: g.supplier, style: 'title' as const }] : []), ...g.lines.map(l => ({ text: dots(l.name, l.qty), style: 'body' as const }))]);
+  const flat: PageLine[] = data.groups.flatMap(g => [...(data.groups.length > 1 ? [{ text: g.supplier, style: 'title' as const }] : []), ...g.lines.map(l => ({ text: dots(l.name, l.qty), style: 'row' as const }))]);
   return (
     <Screen title={t('screens.ReorderPdfPreview')} onBack={() => nav.goBack()} testID="screen-ReorderPdfPreview" footer={<AppButton label={t('export.sharePdf')} onPress={action.go} loading={action.busy} disabled={lines.length === 0} testID="pdf-share" />}>
       {lines.length === 0 ? <StateCard tone="success" title={t('states.reorderEmpty.title')} body={t('states.reorderEmpty.body')} /> : (
@@ -143,10 +157,8 @@ export const ReorderPdfPreviewScreen: React.FC = () => {
           { text: t('pdf.generated', { date: data.generatedAt }), style: 'faint' },
           { text: t('pdf.itemsToOrder', { count: data.count }), style: 'body' },
           { text: '', style: 'gap' },
-          ...flat.slice(0, 80),
-          { text: '', style: 'gap' },
-          { text: t('pdf.reorderNote'), style: 'body' },
-        ]} />
+          ...capRows(flat, n => t('pdf.moreLines', { n: formatInt(n) })),
+        ]} footer={[{ text: t('pdf.reorderNote'), style: 'faint' }]} />
       )}
       <ExportProblem visible={action.failed} onRetry={action.go} />
     </Screen>
@@ -171,7 +183,7 @@ export const CsvPreviewScreen: React.FC = () => {
   return (
     <Screen title={t('screens.CsvPreview')} onBack={() => nav.goBack()} testID="screen-CsvPreview" footer={<AppButton label={t('export.exportCsv')} onPress={action.go} loading={action.busy} disabled={body.length === 0} testID="csv-export" />}>
       <SectionTitle>{kind === 'products' ? 'Products.csv' : 'Reorder.csv'}</SectionTitle>
-      <Card tone="info" title={t('export.rows', { count: body.length, n: formatInt(body.length) })} body={t('export.columns', { columns: visibleCols.map(i => String(header[i] ?? '')).join(' · ') })} />
+      <Card tone="info" title={t('export.rows', { count: body.length, n: formatInt(body.length) })} body={t('export.columns', { columns: visibleCols.map(i => String(header[i] ?? '')).join(dot()) })} />
       {body.length === 0 ? <Helper>{t('export.noRows')}</Helper> : null}
       {body.slice(0, 50).map((r, i) => (
         <View key={i} style={s.csvRow}><Text style={s.csvText} numberOfLines={1}>{visibleCols.map(c => String(r[c] ?? '')).join(' | ')}</Text></View>
@@ -212,11 +224,16 @@ export const FamilyExportScreen: React.FC = () => {
 };
 
 const s = StyleSheet.create({
-  page: { alignSelf: 'center', width: '92%', maxWidth: 330, height: 470, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, borderRadius: 8, paddingHorizontal: 24, paddingVertical: 22 },
+  page: { alignSelf: 'center', width: '92%', maxWidth: 330, height: 470, overflow: 'hidden', backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, borderRadius: 8, paddingHorizontal: 24, paddingVertical: 22 },
+  pageLines: { gap: 4 },
+  pageFooter: { marginTop: 'auto', paddingTop: 8 },
+  gap: { height: 8 },
   mast: { ...tcType.sectionTitle, color: tc.textPrimary },
   pageTitle: { ...tcType.cardTitle, color: tc.textPrimary },
   faint: { ...tcType.micro, color: tc.textFaint },
-  pageBody: { ...tcType.bodySmall, color: tc.textMuted, writingDirection: 'ltr' },
+  pageBody: { ...tcType.bodySmall, color: tc.textMuted },
+  /** Dot-leader product rows ("Milk 2L ........ 14") read like the printed table. */
+  pageRow: { ...tcType.bodySmall, color: tc.textMuted },
   csvRow: { minHeight: 46, justifyContent: 'center', backgroundColor: tc.card, borderWidth: 1, borderColor: tc.rule, paddingHorizontal: 12 },
   csvText: { ...tcType.bodySmall, color: tc.textMuted },
 });

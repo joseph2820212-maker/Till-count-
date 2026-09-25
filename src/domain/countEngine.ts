@@ -202,6 +202,11 @@ export function uncountedIds(session: CountSession): string[] {
   return session.productIdsSnapshot.filter(id => !counted.has(id));
 }
 
+/** Units = the sum of "each" quantities (measured quantities are not units). */
+export function unitsOf(entries: CountSession['entries']): number {
+  return entries.reduce((n, e) => (e.countUnit === 'each' ? n + e.quantityBase : n), 0);
+}
+
 export function progressOf(session: CountSession): { counted: number; total: number; percent: number } {
   const counted = countedIds(session);
   const inScope = session.productIdsSnapshot.filter(id => counted.has(id)).length;

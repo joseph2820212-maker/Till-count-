@@ -11,6 +11,15 @@ import { isMeasuredUnit, MEASURED_DECIMALS } from '../domain/quantity';
 /** Left-to-right mark: keeps a number/code readable inside Arabic text. */
 export const LRM = '‎';
 
+/**
+ * The " · " separator for lines built in code. In Arabic it opens with a RIGHT-TO-LEFT
+ * MARK, so a Latin name before it ("Fridge · 6 منتجات") ends its run there and the parts
+ * read right-to-left in order.
+ */
+export function dot(): string {
+  return i18n.language === 'ar' ? '\u200F · ' : ' · ';
+}
+
 export function ltr(s: string): string {
   return i18n.language === 'ar' ? `${LRM}${s}${LRM}` : s;
 }
@@ -42,17 +51,22 @@ export function setDateFormat(f: DateFormat): void { dateFormat = f; }
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** Short date in the chosen order ("24 Sep 2026", "Sep 24, 2026", "2026-09-24"). */
-export function formatDate(iso: string | undefined | null): string {
+/** A short date in a given order ("24 Sep 2026", "Sep 24, 2026", "2026-09-24"), in the app language. */
+export function formatDateAs(format: DateFormat, iso: string | undefined | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  if (dateFormat === 'ymd') return ltr(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-  if (dateFormat === 'mdy') {
+  if (format === 'ymd') return ltr(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+  if (format === 'mdy') {
     const month = localDate(d, { month: 'short' });
     return `${month} ${d.getDate()}, ${d.getFullYear()}`;
   }
   return localDate(d, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Short date in the user's chosen order. */
+export function formatDate(iso: string | undefined | null): string {
+  return formatDateAs(dateFormat, iso);
 }
 
 export function formatDayMonth(iso: string | undefined | null): string {

@@ -29,7 +29,7 @@ interface ScreenProps {
   onBack?: () => void;
   action?: HeaderAction;
   children?: React.ReactNode;
-  /** Pinned actions under the scroll body (kept above the nav bar / keyboard). */
+  /** Actions: directly under the content on scrolling screens (Figma), pinned under lists. */
   footer?: React.ReactNode;
   /** Forms scroll inside the keyboard-aware container. */
   keyboard?: boolean;
@@ -43,18 +43,23 @@ interface ScreenProps {
 export const Screen: React.FC<ScreenProps> = ({ title, onBack, action, children, footer, keyboard, noScroll, tabRoot, testID }) => {
   const insets = useSafeAreaInsets();
   const bottomPad = tabRoot ? GUTTER : Math.max(insets.bottom, 12) + 4;
-  const content = <View style={s.body}>{children}</View>;
+  const content = (
+    <View style={s.body}>
+      {children}
+      {footer ? <View style={s.inlineFooter}>{footer}</View> : null}
+    </View>
+  );
   return (
     <View style={s.root} testID={testID}>
       <ScreenHeader title={title} onBack={onBack} action={action} />
       {noScroll ? (
         <View style={[s.flex, s.noScrollBody]}>{children}</View>
       ) : keyboard ? (
-        <AppKeyboardScrollView style={s.flex} contentContainerStyle={[s.scrollContent, !footer && { paddingBottom: bottomPad }]}>{content}</AppKeyboardScrollView>
+        <AppKeyboardScrollView style={s.flex} contentContainerStyle={[s.scrollContent, { paddingBottom: bottomPad }]}>{content}</AppKeyboardScrollView>
       ) : (
-        <ScrollView style={s.flex} contentContainerStyle={[s.scrollContent, !footer && { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled">{content}</ScrollView>
+        <ScrollView style={s.flex} contentContainerStyle={[s.scrollContent, { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled">{content}</ScrollView>
       )}
-      {footer ? <View style={[s.footer, { paddingBottom: bottomPad }]}>{footer}</View> : null}
+      {footer && noScroll ? <View style={[s.footer, { paddingBottom: bottomPad }]}>{footer}</View> : null}
     </View>
   );
 };
@@ -239,7 +244,7 @@ export const ProductCountRow: React.FC<CountRowProps> = ({ name, meta, quantity,
   <View style={s.countRow} testID={testID}>
     <View style={s.rowCopy}>
       <Text style={s.cardTitle} numberOfLines={2}>{name}</Text>
-      <Text style={s.cardBody} numberOfLines={1}>{meta}</Text>
+      <Text style={s.cardBody} numberOfLines={2}>{meta}</Text>
     </View>
     <TouchableOpacity style={s.stepper} onPress={onMinus} accessibilityRole="button" accessibilityLabel={labels.minus} testID={testID ? `${testID}-minus` : undefined}>
       <Text style={s.stepperText}>−</Text>
@@ -270,7 +275,10 @@ export const Chip: React.FC<{ label: string; active: boolean; onPress: () => voi
   </TouchableOpacity>
 );
 
-export const ChipRow: React.FC<{ children: React.ReactNode }> = ({ children }) => <View style={s.chipRow}>{children}</View>;
+/** One row of chips; scrolls sideways when they do not fit (Figma keeps chips on one line). */
+export const ChipRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+);
 
 // ─── Required-States card (docs/figma/states) ────────────────────────────────
 
@@ -320,6 +328,7 @@ const s = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
   body: { padding: GUTTER, gap: GAP },
   noScrollBody: { paddingHorizontal: GUTTER, paddingTop: GUTTER, gap: GAP },
+  inlineFooter: { gap: GAP, marginTop: 4 },
   footer: { paddingHorizontal: GUTTER, paddingTop: GAP, gap: GAP, backgroundColor: tc.warm },
   sectionTitle: { ...tcType.sectionTitle, color: tc.textPrimary },
   sectionLabel: { ...tcType.sectionLabel, color: tc.textMuted },
@@ -354,7 +363,7 @@ const s = StyleSheet.create({
   qtyEmpty: { color: tc.textFaint },
   track: { height: 5, borderRadius: 999, backgroundColor: tc.inputMuted, overflow: 'hidden' },
   fill: { height: 5, borderRadius: 999, backgroundColor: tc.accent },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipRow: { flexDirection: 'row', gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, borderColor: tc.border, backgroundColor: tc.card, alignItems: 'center', justifyContent: 'center' },
   chipOn: { backgroundColor: tc.navy, borderColor: tc.navy },
   chipText: { ...tcType.cardLabel, color: tc.textPrimary },
@@ -365,7 +374,8 @@ const s = StyleSheet.create({
   stateDanger: { backgroundColor: tc.softRed, borderColor: tc.danger },
   stateActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   keypad: { gap: 8 },
-  keyRow: { flexDirection: 'row', gap: 8 },
+  /** Number pads read 1-2-3 left to right in every language (UI_RULES #7). */
+  keyRow: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', gap: 8 },
   key: { flex: 1, height: 54, borderRadius: 12, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, alignItems: 'center', justifyContent: 'center' },
   keyPrimary: { backgroundColor: tc.navy, borderColor: tc.navy },
   keyText: { ...tcType.button, color: tc.textPrimary },

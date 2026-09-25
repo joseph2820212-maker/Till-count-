@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { AppButton } from '../../../components/AppButton';
-import { Card, Helper, ListRow, Screen, SectionTitle, ToggleRow } from '../../../ui/kit';
+import { Card, ListRow, Screen, SectionTitle, ToggleRow } from '../../../ui/kit';
 import { SelectField } from '../../../ui/fields';
 import { OverflowMenu } from '../../../ui/overlays';
 import { tc } from '../../../theme/colors';
@@ -15,7 +15,10 @@ import { updateSettings } from '../../../state/actions';
 import i18n, { changeLanguage, SUPPORTED_LANGUAGES, type AppLanguage } from '../../../i18n';
 import { SYMBOL_MAP, setCurrencyOption, useCurrencyCode } from '../../../utils/currency';
 import { setNumberFormatOverride } from '../../../utils/locale';
-import { setDateFormat, unitLabel } from '../../../utils/format';
+import { dot, formatDateAs, setDateFormat, unitLabel } from '../../../utils/format';
+
+/** The example date shown for each date-format option (Figma: 24 Sep 2026). */
+const SAMPLE_DATE = '2026-09-24T12:00:00';
 import { COUNT_UNITS, type AppSettings, type CountMode, type DateFormat, type NumberFormat, type VolumeUnit, type WeekStart, type WeightUnit, type WithoutTarget } from '../../../domain/types';
 import { useNav } from '../../../navigation/nav';
 
@@ -116,7 +119,7 @@ export const UnitsFormatsScreen: React.FC = () => {
       <SelectField<WeightUnit> label={t('settings.weight')} value={draft.weightUnit} onChange={v => set('weightUnit', v)} options={[{ value: 'kg', label: 'kg / g' }, { value: 'g', label: 'g / kg' }]} testID="set-weight" />
       <SelectField<VolumeUnit> label={t('settings.volume')} value={draft.volumeUnit} onChange={v => set('volumeUnit', v)} options={[{ value: 'l', label: 'L / ml' }, { value: 'ml', label: 'ml / L' }]} testID="set-volume" />
       <SelectField<NumberFormat> label={t('settings.numberFormat')} value={draft.numberFormat} onChange={v => set('numberFormat', v)} options={[{ value: 'auto', label: t('settings.followLanguage') }, { value: 'comma-dot', label: '1,234.56' }, { value: 'dot-comma', label: '1.234,56' }, { value: 'space-comma', label: '1 234,56' }]} testID="set-number" />
-      <SelectField<DateFormat> label={t('settings.dateFormat')} value={draft.dateFormat} onChange={v => set('dateFormat', v)} options={[{ value: 'dmy', label: '24 Sep 2026' }, { value: 'mdy', label: 'Sep 24, 2026' }, { value: 'ymd', label: '2026-09-24' }]} testID="set-date" />
+      <SelectField<DateFormat> label={t('settings.dateFormat')} value={draft.dateFormat} onChange={v => set('dateFormat', v)} options={(['dmy', 'mdy', 'ymd'] as const).map(f => ({ value: f, label: formatDateAs(f, SAMPLE_DATE) }))} testID="set-date" />
       <SelectField<WeekStart> label={t('settings.weekStarts')} value={draft.weekStart} onChange={v => set('weekStart', v)} options={[{ value: 'monday', label: t('settings.day.monday') }, { value: 'sunday', label: t('settings.day.sunday') }, { value: 'saturday', label: t('settings.day.saturday') }]} testID="set-week" />
       <ListRow title={t('screens.Currency')} subtitle={useCurrencyCode()} onPress={() => nav.navigate('Currency')} testID="units-currency" />
     </Screen>
@@ -139,7 +142,7 @@ export const CurrencyScreen: React.FC = () => {
         return (
           <ListRow
             key={option}
-            title={`${c} · ${SYMBOL_MAP[option]}`}
+            title={`${c}${dot()}${SYMBOL_MAP[option]}`}
             subtitle={selected ? t('common.selected') : t(`currencyNames.${c}`, { defaultValue: c })}
             selected={selected}
             onPress={() => { void setCurrencyOption(option).then(() => nav.goBack()); }}
@@ -183,7 +186,6 @@ export const LanguageScreen: React.FC = () => {
           testID={`language-${lang}`}
         />
       ))}
-      <Helper>{t('language.reviewNote')}</Helper>
     </Screen>
   );
 };

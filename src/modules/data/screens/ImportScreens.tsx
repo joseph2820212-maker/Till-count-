@@ -3,7 +3,7 @@
  * 43 Import complete (26:928) · 44 Import from TillCalc (26:957)
  */
 import React, { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, I18nManager, StyleSheet, View } from 'react-native';
 import { Text } from '../../../ui/Text';
 import { useTranslation } from 'react-i18next';
 import { AppButton } from '../../../components/AppButton';
@@ -12,7 +12,7 @@ import { OptionSheet } from '../../../ui/overlays';
 import { tc } from '../../../theme/colors';
 import { tcType } from '../../../theme/typography';
 import { getState, useAppState, commitCatalog } from '../../../state/store';
-import { formatInt, ltr } from '../../../utils/format';
+import { dot, formatInt, ltr } from '../../../utils/format';
 import { logError } from '../../../utils/errorLog';
 import { goTab, useNav, useParams } from '../../../navigation/nav';
 import { useTier } from '../../billing/useTier';
@@ -143,14 +143,19 @@ export const CsvFieldMappingScreen: React.FC = () => {
         <View key={i}>
           <ListRow
             title={h || t('import.columnN', { n: i + 1 })}
-            subtitle={session.table![1]?.[i] ? t('import.example', { value: session.table![1][i] }) : undefined}
-            right={<Text style={[s.target, mapping[i] === 'ignore' && s.ignored]} numberOfLines={1}>{`→ ${t(`import.field.${mapping[i] ?? 'ignore'}`)}`}</Text>}
+            right={(
+              <View style={s.targetWrap}>
+                <Text style={s.arrow}>{I18nManager.isRTL ? '←' : '→'}</Text>
+                <Text style={[s.target, mapping[i] === 'ignore' && s.ignored]} numberOfLines={1}>{t(`import.field.${mapping[i] ?? 'ignore'}`)}</Text>
+              </View>
+            )}
             onPress={() => setEditing(i)}
+            chevron={false}
             testID={`mapping-${i}`}
           />
         </View>
       ))}
-      <OptionSheet visible={editing !== null} onClose={() => setEditing(null)} title={editing !== null ? headers[editing] : ''} options={options} value={editing !== null ? mapping[editing] : undefined} onSelect={v => { if (editing !== null) setField(editing, v); }} />
+      <OptionSheet visible={editing !== null} onClose={() => setEditing(null)} title={editing !== null ? [headers[editing] || t('import.columnN', { n: editing + 1 }), session.table![1]?.[editing] ? t('import.example', { value: session.table![1][editing] }) : ''].filter(Boolean).join(dot()) : ''} options={options} value={editing !== null ? mapping[editing] : undefined} onSelect={v => { if (editing !== null) setField(editing, v); }} />
     </Screen>
   );
 };
@@ -161,7 +166,7 @@ function statusLine(t: (k: string, o?: Record<string, unknown>) => string, c: Ro
   if (c.kind === 'attention') return `! ${c.row.issues.map(i => t(`import.issue.${i}`)).join(', ')}`;
   if (c.kind === 'match') return `= ${t('import.matchLine', { name: name(c.productId), by: t(`import.by.${c.by}`) })}`;
   const detail = c.row.barcodes[0] ? t('import.readyBarcode', { code: ltr(c.row.barcodes[0].code) }) : c.row.category ? t('import.readyCategory', { name: c.row.category }) : c.row.supplier ? t('import.readySupplier', { name: c.row.supplier }) : t('import.readyManual');
-  return `✓ ${t('import.ready')} · ${detail}`;
+  return `✓ ${t('import.ready')}${dot()}${detail}`;
 }
 
 export const ImportReviewScreen: React.FC = () => {
@@ -231,7 +236,6 @@ export const ImportReviewScreen: React.FC = () => {
             title={item.row.name || t('import.unknownRow', { n: item.row.line })}
             subtitle={statusLine(t, item, id => index.byId.get(id)?.name ?? '')}
             chevron={false}
-            tone={item.kind === 'attention' ? 'danger' : 'default'}
             testID={`review-row-${item.row.line}`}
           />
         )}
@@ -259,15 +263,18 @@ export const ImportCompleteScreen: React.FC = () => {
         testID="import-complete-card"
       />
       <ListRow title={t('import.viewProducts')} subtitle={t('import.viewProductsBody')} onPress={() => { setImportSession(null); nav.popToTop(); goTab(nav, 'Products'); }} testID="import-view-products" />
-      {skipped ? <ListRow title={t('import.skippedRows')} subtitle={t('import.reviewSkipped', { n: formatInt(skippedRows.length) })} onPress={() => setShowSkipped(x => !x)} testID="import-skipped" /> : null}
+      {skippedRows.length ? <ListRow title={t('import.skippedRows')} subtitle={t('import.reviewN', { count: skippedRows.length, n: formatInt(skippedRows.length) })} onPress={() => setShowSkipped(x => !x)} testID="import-skipped" /> : null}
       {showSkipped ? skippedRows.map(r => (
-        <ListRow key={r.line} title={r.name || t('import.unknownRow', { n: r.line })} subtitle={`! ${t('import.lineN', { n: r.line })} · ${r.issues.map(i => t(`import.issue.${i}`)).join(', ')}`} chevron={false} tone="danger" />
+        <ListRow key={r.line} title={r.name || t('import.unknownRow', { n: r.line })} subtitle={`! ${t('import.lineN', { n: r.line })}${dot()}${r.issues.map(i => t(`import.issue.${i}`)).join(', ')}`} chevron={false} tone="danger" />
       )) : null}
     </Screen>
   );
 };
 
 const s = StyleSheet.create({
-  target: { ...tcType.body, color: tc.accent, maxWidth: 150 },
+  /** Arrow + target field in a fixed column (Figma field mapping). */
+  targetWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, width: 150 },
+  arrow: { ...tcType.body, color: tc.textFaint },
+  target: { ...tcType.body, color: tc.accent, flexShrink: 1 },
   ignored: { color: tc.textFaint },
 });

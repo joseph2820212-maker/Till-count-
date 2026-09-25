@@ -30,17 +30,19 @@ interface TextFieldProps {
   onSubmitEditing?: () => void;
   right?: React.ReactNode;
   multiline?: boolean;
+  /** Read-only value (shown, not editable). */
+  editable?: boolean;
 }
 
 export const TextField: React.FC<TextFieldProps> = ({
-  label, value, onChangeText, placeholder, keyboardType = 'default', ltr, secure, error, hint, maxLength, autoFocus, testID, onSubmitEditing, right, multiline,
+  label, value, onChangeText, placeholder, keyboardType = 'default', ltr, secure, error, hint, maxLength, autoFocus, testID, onSubmitEditing, right, multiline, editable = true,
 }) => {
   const numeric = keyboardType === 'decimal-pad' || keyboardType === 'number-pad' || keyboardType === 'numeric';
   const forceLtr = ltr || numeric;
   return (
     <View style={s.wrap}>
       <Text style={s.label} numberOfLines={2}>{label}</Text>
-      <View style={[s.box, multiline && s.boxMulti, !!error && s.boxError]}>
+      <View style={[s.box, multiline && s.boxMulti, !!error && s.boxError, !editable && s.boxReadOnly]}>
         <AppTextInput
           style={[s.input, multiline && s.inputMulti, forceLtr && I18nManager.isRTL ? s.ltrInput : null]}
           value={value}
@@ -59,6 +61,7 @@ export const TextField: React.FC<TextFieldProps> = ({
           accessibilityHint={error ?? hint}
           testID={testID}
           multiline={multiline}
+          editable={editable}
         />
         {right}
       </View>
@@ -89,7 +92,7 @@ export const ActionField: React.FC<{ label: string; value?: string; placeholder:
   <View style={s.wrap}>
     <Text style={s.label}>{label}</Text>
     <TouchableOpacity style={s.box} onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${value || placeholder}`} testID={testID}>
-      <Text style={[s.value, !value && s.placeholder, ltr && s.ltrText]} numberOfLines={1}>{value || placeholder}</Text>
+      <Text style={[s.value, !value && s.placeholder, ltr && !!value && s.ltrText]} numberOfLines={1}>{value || placeholder}</Text>
       <Ionicons name={icon} size={20} color={tc.navy} />
     </TouchableOpacity>
   </View>
@@ -123,9 +126,12 @@ const s = StyleSheet.create({
   box: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, borderRadius: 12, paddingHorizontal: 14 },
   boxMulti: { alignItems: 'flex-start', paddingVertical: 10, minHeight: 96 },
   boxError: { borderColor: tc.danger },
-  input: { flex: 1, ...tcType.input, color: tc.textPrimary, paddingVertical: 12 },
+  boxReadOnly: { backgroundColor: tc.inputMuted },
+  /** Inputs align to the reading start (Android aligns by the typed text otherwise). */
+  input: { flex: 1, ...tcType.input, color: tc.textPrimary, paddingVertical: 12, textAlign: I18nManager.isRTL ? 'right' : 'left' },
   inputMulti: { textAlignVertical: 'top', paddingVertical: 0 },
-  ltrInput: { writingDirection: 'ltr', textAlign: 'left' },
+  /** Numbers / codes read left to right but still start at the RTL edge. */
+  ltrInput: { writingDirection: 'ltr', textAlign: 'right' },
   ltrText: { writingDirection: 'ltr' },
   value: { flex: 1, ...tcType.input, color: tc.textPrimary },
   placeholder: { color: tc.textFaint },

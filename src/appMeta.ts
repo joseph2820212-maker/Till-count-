@@ -10,7 +10,8 @@ export const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL || 'support@t
  * same as Till Note"). Only the wording of the documents is TillCount-specific. Every address can be
  * overridden per build with EXPO_PUBLIC_* variables.
  */
-export const EFFECTIVE_DATE = '24 September 2026';
+/** Legal documents' effective date (ISO; shown in the reader's language). */
+export const EFFECTIVE_DATE = '2026-09-24';
 export const EMAILS = {
   support: SUPPORT_EMAIL,
   privacy: process.env.EXPO_PUBLIC_PRIVACY_EMAIL || 'privacy@tillnote.com',

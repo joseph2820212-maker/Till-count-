@@ -66,7 +66,8 @@ export function isCountEntry(v: unknown): v is CountEntry {
 }
 
 /** A stored session header: a session without its entries (entries live in their own collection). */
-export type CountSessionHeader = Omit<CountSession, 'entries'> & { entryCount: number };
+/** Header of a stored count. `unitsTotal` (sum of "each" quantities) is absent on headers written before it existed. */
+export type CountSessionHeader = Omit<CountSession, 'entries'> & { entryCount: number; unitsTotal?: number };
 
 export function isCountSessionHeader(v: unknown): v is CountSessionHeader {
   if (!isObj(v)) return false;
@@ -76,6 +77,7 @@ export function isCountSessionHeader(v: unknown): v is CountSessionHeader {
     && iso(v.startedAt) && optIso(v.pausedAt) && optIso(v.completedAt)
     && (v.status !== 'completed' || iso(v.completedAt))
     && Number.isInteger(v.entryCount) && (v.entryCount as number) >= 0 && optBool(v.isSample)
+    && (v.unitsTotal === undefined || (typeof v.unitsTotal === 'number' && Number.isFinite(v.unitsTotal) && v.unitsTotal >= 0))
     && (v.attentionAtCompletion === undefined || (isObj(v.attentionAtCompletion) && Number.isInteger(v.attentionAtCompletion.out) && Number.isInteger(v.attentionAtCompletion.low)));
 }
 

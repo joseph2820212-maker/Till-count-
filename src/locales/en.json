@@ -62,7 +62,8 @@
     "moreOptions": "More options",
     "items": "items",
     "noData": "No data yet",
-    "csvPreviewBanner": "{{count}} rows"
+    "csvPreviewBanner": "{{count}} rows",
+    "listSeparator": ", "
   },
   "app": {
     "name": "TillCount"
@@ -374,7 +375,8 @@
     "completedOn": "Completed {{date}} at {{time}}",
     "units_n_one": "{{n}} unit",
     "units_n_other": "{{n}} units",
-    "shareReport": "Share report"
+    "shareReport": "Share report",
+    "rowSummaryUnits": "{{products}} products · {{units}} units"
   },
   "favourites": {
     "new": "New favourite",
@@ -417,7 +419,6 @@
     "searchPlaceholder": "Search products, barcode or SKU",
     "count_one": "{{n}} product",
     "count_other": "{{n}} products",
-    "summary": "{{categories}} categories · {{suppliers}} suppliers",
     "counted": "{{qty}} counted",
     "archivedChip": "Archived",
     "showArchived": "Show archived products",
@@ -706,7 +707,6 @@
     "viewProducts": "View imported products",
     "viewProductsBody": "Open the product list",
     "skippedRows": "Skipped rows",
-    "reviewSkipped": "Review {{n}} rows",
     "errors": {
       "empty": "The file has no product rows.",
       "tooLarge": "The file is too large to import (5 MB at most).",
@@ -733,13 +733,13 @@
     "importantBody": "TillCount cannot recover a forgotten backup password.",
     "create": "Create backup",
     "created": "Backup created",
-    "summary": "{{products}} products · {{counts}} completed counts · settings included",
     "saveSomewhere": "Save the file somewhere you control, such as Files, Drive or external storage.",
     "share": "Share backup file",
     "errors": {
       "short": "Use at least {{n}} characters.",
       "mismatch": "The passwords do not match."
-    }
+    },
+    "settingsIncluded": "settings included"
   },
   "restore": {
     "title": "Restore TillCount",
@@ -758,12 +758,10 @@
     "ready": "Ready to restore",
     "createdVerified": "Created {{date}} · backup verified",
     "products": "Products",
-    "productsLine": "{{n}} products · barcodes included",
     "history": "Count history",
     "historyLine_one": "{{n}} completed count",
     "historyLine_other": "{{n}} completed counts",
     "suppliersLocations": "Suppliers & locations",
-    "suppliersLocationsLine": "{{s}} suppliers · {{l}} locations",
     "settings": "Settings",
     "settingsLine": "Count, reorder, units and formats",
     "settingsNone": "Not included",
@@ -771,7 +769,6 @@
     "replacesBody": "A staged restore protects the current data until the replacement is complete.",
     "restore": "Restore backup",
     "readyTitle": "Your data is ready",
-    "completeLine": "{{products}} products · {{counts}} completed counts · settings restored",
     "completeBody": "TillCount reopened the restored data successfully. Your previous data was replaced only after verification completed.",
     "errors": {
       "too-large": "The file is too large.",
@@ -786,7 +783,9 @@
       "empty-backup": "The backup contains no TillCount data.",
       "rolled-back": "The restore could not finish. Your previous data is unchanged.",
       "rollback-failed": "The restore could not finish. Restart TillCount to complete the automatic recovery."
-    }
+    },
+    "settingsRestored": "settings restored",
+    "barcodesIncluded": "barcodes included"
   },
   "data": {
     "yourData": "Your data",
@@ -801,7 +800,14 @@
     "exportReports": "Export reports",
     "exportReportsBody": "Count and reorder PDF/CSV",
     "offlineTitle": "Offline",
-    "offlineBody": "Your operational data stays on this device unless you export/share it."
+    "offlineBody": "Your operational data stays on this device unless you export/share it.",
+    "removeSample": "Remove sample products",
+    "removeSampleBody": "Deletes only the marked sample records",
+    "removeSampleTitle": "Remove sample products?",
+    "removeSampleConfirmBody": "Sample products, their sample count and sample favourite are deleted. Your own products, counts and history stay exactly as they are.",
+    "removeSampleConfirm": "Remove samples",
+    "removeSampleOpenCount": "Finish or discard the open sample count first.",
+    "sampleRemoved": "Sample products removed."
   },
   "more": {
     "title": "Settings & data",
@@ -1023,9 +1029,9 @@
       "h4": "Support",
       "p4": "Do not send backup passwords or unnecessary private business data in support messages.",
       "h5": "Camera",
-      "p5": "The camera is used only while the barcode scanner is open, to read barcodes. No photos or video are stored or sent.",
+      "p5": "The camera is used only while the barcode scanner is open, to read barcodes. Barcodes are read on your device by Google ML Kit. No photos or video are stored or sent.",
       "h6": "No tracking",
-      "p6": "TillCount contains no advertising, analytics or tracking SDKs and does not send usage data.",
+      "p6": "TillCount contains no advertising, analytics or tracking SDKs and does not send your data anywhere. Google's ML Kit component used by the scanner may send Google anonymous performance and usage metrics about the scanning feature, never your barcodes, images, products or counts.",
       "h7": "Purchases",
       "p7": "If you buy TillCount Pro, the purchase is processed by Apple or Google and RevenueCat. They receive purchase details, never your products or counts.",
       "h8": "Children",
@@ -1218,7 +1224,7 @@
     },
     "restoreConfirm": {
       "title": "Restore confirmation",
-      "body": "Replace current TillCount data with this backup ({{products}} products, {{counts}} completed counts)? This cannot be undone after it finishes.",
+      "body": "Replace current TillCount data with this backup ({{summary}})? This cannot be undone after it finishes.",
       "restore": "Restore"
     }
   },
@@ -1265,5 +1271,17 @@
   "capture": {
     "title": "Scan or type",
     "useCode": "Use this code"
+  },
+  "plural": {
+    "products_one": "{{n}} product",
+    "products_other": "{{n}} products",
+    "completedCounts_one": "{{n}} completed count",
+    "completedCounts_other": "{{n}} completed counts",
+    "suppliers_one": "{{n}} supplier",
+    "suppliers_other": "{{n}} suppliers",
+    "locations_one": "{{n}} location",
+    "locations_other": "{{n}} locations",
+    "categories_one": "{{n}} category",
+    "categories_other": "{{n}} categories"
   }
 }

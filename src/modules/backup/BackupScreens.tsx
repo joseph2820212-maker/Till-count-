@@ -9,9 +9,10 @@ import { AppButton } from '../../components/AppButton';
 import { Card, Helper, ListRow, Screen, SectionTitle, StateCard } from '../../ui/kit';
 import { TextField } from '../../ui/fields';
 import { StateDialog } from '../../ui/overlays';
-import { flushOpenSession, loadStore, resetStoreForTests } from '../../state/store';
+import { flushOpenSession, loadStore, resetStoreForTests, useAppState } from '../../state/store';
+import { removeSampleData } from '../onboarding/sampleData';
 import { APP_VERSION } from '../../appMeta';
-import { formatDate, formatDayMonth, formatInt, ltr } from '../../utils/format';
+import { dot, formatDate, formatDayMonth, formatInt, ltr } from '../../utils/format';
 import { logError } from '../../utils/errorLog';
 import { goTab, useNav, useParams } from '../../navigation/nav';
 import { pickTextFile, FileTooLargeError } from '../data/files';
@@ -25,6 +26,20 @@ import { clearRestoreSession, getInspection, getStaged, setInspection, setStaged
 export const DataBackupScreen: React.FC = () => {
   const { t } = useTranslation();
   const nav = useNav();
+  const hasSamples = useAppState(st => st.products.some(p => p.isSample));
+  const sampleCountOpen = useAppState(st => !!st.openSession?.isSample);
+  const [confirmSamples, setConfirmSamples] = useState(false);
+  const [sampleNote, setSampleNote] = useState<string | null>(null);
+  const removeSamples = async () => {
+    setConfirmSamples(false);
+    try {
+      await removeSampleData();
+      setSampleNote(t('data.sampleRemoved'));
+    } catch (e) {
+      logError('removeSampleData', e);
+      setSampleNote(t('data.removeSampleOpenCount'));
+    }
+  };
   return (
     <Screen title={t('screens.DataBackup')} onBack={() => nav.goBack()} testID="screen-DataBackup">
       <SectionTitle>{t('data.yourData')}</SectionTitle>
@@ -33,7 +48,29 @@ export const DataBackupScreen: React.FC = () => {
       <ListRow title={t('data.importProducts')} subtitle={t('data.importProductsBody')} onPress={() => nav.navigate('ImportCentre')} testID="data-import" />
       <ListRow title={t('data.exportProducts')} subtitle={t('data.exportProductsBody')} onPress={() => nav.navigate('FamilyExport')} testID="data-export-products" />
       <ListRow title={t('data.exportReports')} subtitle={t('data.exportReportsBody')} onPress={() => nav.navigate('ExportCentre')} testID="data-export-reports" />
+      {hasSamples ? (
+        <ListRow
+          title={t('data.removeSample')}
+          subtitle={sampleCountOpen ? t('data.removeSampleOpenCount') : t('data.removeSampleBody')}
+          onPress={sampleCountOpen ? undefined : () => setConfirmSamples(true)}
+          chevron={!sampleCountOpen}
+          testID="data-remove-sample"
+        />
+      ) : null}
+      {sampleNote ? <Helper>{sampleNote}</Helper> : null}
       <Card tone="success" title={t('data.offlineTitle')} body={t('data.offlineBody')} />
+      <StateDialog
+        visible={confirmSamples}
+        tone="danger"
+        title={t('data.removeSampleTitle')}
+        body={t('data.removeSampleConfirmBody')}
+        onDismiss={() => setConfirmSamples(false)}
+        testID="state-remove-sample"
+        actions={[
+          { label: t('common.cancel'), onPress: () => setConfirmSamples(false), testID: 'remove-sample-cancel' },
+          { label: t('data.removeSampleConfirm'), variant: 'danger', onPress: () => { void removeSamples(); }, testID: 'remove-sample-confirm' },
+        ]}
+      />
     </Screen>
   );
 };
@@ -100,7 +137,7 @@ export const BackupSuccessScreen: React.FC = () => {
       )}
     >
       <SectionTitle>{t('backup.created')}</SectionTitle>
-      <Card tone="success" strongBorder title={ltr(fileName)} body={t('backup.summary', { products: formatInt(products), counts: formatInt(counts) })} testID="backup-file-card" />
+      <Card tone="success" strongBorder title={ltr(fileName)} body={[t('plural.products', { count: products, n: formatInt(products) }), t('plural.completedCounts', { count: counts, n: formatInt(counts) }), t('backup.settingsIncluded')].join(dot())} testID="backup-file-card" />
       <Helper size="body">{t('backup.saveSomewhere')}</Helper>
       {failed ? <StateCard tone="danger" title={t('states.exportProblem.title')} body={t('states.exportProblem.body')} actions={[{ label: t('states.exportProblem.retry'), variant: 'danger', onPress: share }]} /> : null}
     </Screen>
@@ -233,9 +270,9 @@ export const RestorePreviewScreen: React.FC = () => {
     >
       <SectionTitle>{t('restore.ready')}</SectionTitle>
       <Card tone="info" title={ltr(inspection.fileName)} body={t('restore.createdVerified', { date: staged.createdAt ? formatDate(staged.createdAt) : '—' })} />
-      <ListRow title={t('restore.products')} subtitle={t('restore.productsLine', { n: formatInt(c.products) })} chevron={false} />
+      <ListRow title={t('restore.products')} subtitle={[t('plural.products', { count: c.products, n: formatInt(c.products) }), t('restore.barcodesIncluded')].join(dot())} chevron={false} />
       <ListRow title={t('restore.history')} subtitle={t('restore.historyLine', { count: c.completedCounts, n: formatInt(c.completedCounts) })} chevron={false} />
-      <ListRow title={t('restore.suppliersLocations')} subtitle={t('restore.suppliersLocationsLine', { s: formatInt(c.suppliers), l: formatInt(c.locations) })} chevron={false} />
+      <ListRow title={t('restore.suppliersLocations')} subtitle={[t('plural.suppliers', { count: c.suppliers, n: formatInt(c.suppliers) }), t('plural.locations', { count: c.locations, n: formatInt(c.locations) })].join(dot())} chevron={false} />
       <ListRow title={t('restore.settings')} subtitle={c.settings ? t('restore.settingsLine') : t('restore.settingsNone')} chevron={false} />
       <Card tone="danger" title={t('restore.replacesTitle')} body={t('restore.replacesBody')} />
       {problem ? <StateCard tone="danger" title={t('restore.problemTitle')} body={problem} testID="state-restore-problem" /> : null}
@@ -243,7 +280,7 @@ export const RestorePreviewScreen: React.FC = () => {
         visible={confirm}
         tone="info"
         title={t('states.restoreConfirm.title')}
-        body={t('states.restoreConfirm.body', { products: formatInt(c.products), counts: formatInt(c.completedCounts) })}
+        body={t('states.restoreConfirm.body', { summary: [t('plural.products', { count: c.products, n: formatInt(c.products) }), t('plural.completedCounts', { count: c.completedCounts, n: formatInt(c.completedCounts) })].join(t('common.listSeparator')) })}
         onDismiss={() => setConfirm(false)}
         testID="state-restore-confirm"
         actions={[
@@ -265,7 +302,7 @@ export const RestoreCompleteScreen: React.FC = () => {
   return (
     <Screen title={t('screens.RestoreComplete')} onBack={done} testID="screen-RestoreComplete" footer={<AppButton label={t('common.done')} onPress={done} testID="restore-done" />}>
       <SectionTitle>{t('screens.RestoreComplete')}</SectionTitle>
-      <Card tone="success" strongBorder title={t('restore.readyTitle')} body={t('restore.completeLine', { products: formatInt(products), counts: formatInt(counts) })} />
+      <Card tone="success" strongBorder title={t('restore.readyTitle')} body={[t('plural.products', { count: products, n: formatInt(products) }), t('plural.completedCounts', { count: counts, n: formatInt(counts) }), t('restore.settingsRestored')].join(dot())} />
       <Helper size="body">{t('restore.completeBody')}</Helper>
     </Screen>
   );

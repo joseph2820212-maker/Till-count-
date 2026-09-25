@@ -94,6 +94,9 @@ export function localDate(
     const d = toDisplayDate(date);
     if (isNaN(d.getTime())) return String(date);
     if (i18n.language === 'ar') return arabicDate(d, opts);
+    // English short months come from the app's own list ("Sep", as in Figma): ICU's en-GB
+    // data says "Sept", and differs between Android versions.
+    if (i18n.language === 'en' && opts.month === 'short' && !opts.weekday) return arabicDate(d, opts);
     return normalizeArabicNumerals(d.toLocaleDateString(appLocale(), opts));
   } catch { return String(date); }
 }

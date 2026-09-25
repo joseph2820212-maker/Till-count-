@@ -10,7 +10,7 @@ interface AppSwitchProps {
 }
 
 /**
- * F09.1 (audit): the thumb's absolute `left` is mirrored by RN in RTL, but a
+ * F09.1 (audit): the thumb sits at the `start` edge (mirrored in RTL), but a
  * translateX is not — so in RTL the "on" position moves the thumb the other way.
  */
 export function getSwitchThumbTranslate(value: boolean, rtl: boolean = I18nManager.isRTL): number {
@@ -60,7 +60,7 @@ export const AppSwitch: React.FC<AppSwitchProps> = ({ value, onValueChange, disa
             shadowOffset: { width: 0, height: 1 },
             elevation: 2,
             position: 'absolute',
-            left: 2,
+            start: 2,
             top: 2,
             transform: [{ translateX: translate }],
           }}

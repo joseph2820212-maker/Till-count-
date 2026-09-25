@@ -7,7 +7,7 @@ import { BodyText, Card, MetricCard, MetricRow, ProgressBar, Screen, SectionLabe
 import { OverflowMenu } from '../../ui/overlays';
 import { useAppState } from '../../state/store';
 import { useCompletedSessions, useOpenProgress, useRecentlyCounted, useReorder } from '../../state/selectors';
-import { formatInt, formatQty, weekdayShort } from '../../utils/format';
+import { dot, formatInt, formatQty, weekdayShort } from '../../utils/format';
 import { goTab, useNav } from '../../navigation/nav';
 import { scopeTitle } from '../count/scopeLabel';
 
@@ -63,7 +63,7 @@ export const HomeScreen: React.FC = () => {
       />
       <Card
         title={t('home.recentlyCounted')}
-        body={recent.length ? recent.map(r => `${r.product.name} · ${formatQty(r.snapshot.quantityBase, r.product.countUnit)}`).join('   ·   ') : hasProducts ? t('home.noRecent') : t('home.noProducts')}
+        body={recent.length ? recent.map(r => `${r.product.name}${dot()}${formatQty(r.snapshot.quantityBase, r.product.countUnit)}`).join(`  ${dot()}  `) : hasProducts ? t('home.noRecent') : t('home.noProducts')}
         onPress={() => nav.navigate('CountHistory')}
         testID="home-recent"
       />

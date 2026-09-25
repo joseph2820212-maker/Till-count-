@@ -14,6 +14,8 @@ import { APP_NAME, APP_VERSION, COMPANY_DETAILS, EFFECTIVE_DATE, EMAILS, PUBLISH
 import { useNav } from '../../../navigation/nav';
 import { OSS_COUNT, OSS_PACKAGES } from '../content/openSourceLicenses';
 import { OSS_LICENSE_TEXTS } from '../content/openSourceLicenseTexts';
+import { dot } from '../../../utils/format';
+import { localDate } from '../../../utils/locale';
 
 /** Interpolation values shared by legal, help and support strings. */
 export function legalVars(t: (k: string) => string): Record<string, string> {
@@ -28,7 +30,7 @@ export function legalVars(t: (k: string) => string): Record<string, string> {
     registeredOffice: COMPANY_DETAILS.registeredOffice,
     jurisdiction: COMPANY_DETAILS.governingJurisdiction,
     vatStatus: t('legal.vatNotRegistered'),
-    date: EFFECTIVE_DATE,
+    date: localDate(`${EFFECTIVE_DATE}T12:00:00`, { day: 'numeric', month: 'long', year: 'numeric' }),
   };
 }
 
@@ -175,7 +177,7 @@ export const LicencesScreen: React.FC = () => {
       })}
       <ListRow title={t('licences.other')} subtitle={t('licences.otherBody', { count: OSS_COUNT })} onPress={() => setAll(x => !x)} testID="licence-all" />
       {all ? OSS_PACKAGES.map(p => (
-        <ListRow key={p.name} title={p.name} subtitle={`${p.version} · ${p.license}`} onPress={() => setOpen(open === p.name ? null : p.name)} chevron={p.textIndex >= 0} />
+        <ListRow key={p.name} title={p.name} subtitle={`${p.version}${dot()}${p.license}`} onPress={() => setOpen(open === p.name ? null : p.name)} chevron={p.textIndex >= 0} />
       )) : null}
       {all && open && !FEATURED.some(f => f.pkg === open) ? <Card><Text style={s.licence}>{textFor(open)}</Text></Card> : null}
     </Screen>

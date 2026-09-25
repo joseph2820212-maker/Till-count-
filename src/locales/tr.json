@@ -62,7 +62,8 @@
     "moreOptions": "Diğer seçenekler",
     "items": "ürün",
     "noData": "Henüz veri yok",
-    "csvPreviewBanner": "{{count}} satır"
+    "csvPreviewBanner": "{{count}} satır",
+    "listSeparator": ", "
   },
   "app": {
     "name": "TillCount"
@@ -374,7 +375,8 @@
     "completedOn": "{{date}} günü {{time}} saatinde tamamlandı",
     "units_n_one": "{{n}} birim",
     "units_n_other": "{{n}} birim",
-    "shareReport": "Raporu paylaş"
+    "shareReport": "Raporu paylaş",
+    "rowSummaryUnits": "{{products}} ürün · {{units}} birim"
   },
   "favourites": {
     "new": "Yeni favori",
@@ -417,7 +419,6 @@
     "searchPlaceholder": "Ürün, barkod veya SKU ara",
     "count_one": "{{n}} ürün",
     "count_other": "{{n}} ürün",
-    "summary": "{{categories}} kategori · {{suppliers}} tedarikçi",
     "counted": "{{qty}} sayıldı",
     "archivedChip": "Arşivlendi",
     "showArchived": "Arşivlenen ürünleri göster",
@@ -706,7 +707,6 @@
     "viewProducts": "İçe aktarılan ürünleri görüntüle",
     "viewProductsBody": "Ürün listesini aç",
     "skippedRows": "Atlanan satırlar",
-    "reviewSkipped": "{{n}} satırı gözden geçir",
     "errors": {
       "empty": "Dosyada ürün satırı yok.",
       "tooLarge": "Dosya içe aktarmak için çok büyük (en fazla 5 MB).",
@@ -733,13 +733,13 @@
     "importantBody": "TillCount unutulan bir yedekleme şifresini kurtaramaz.",
     "create": "Yedek oluştur",
     "created": "Yedek oluşturuldu",
-    "summary": "{{products}} ürün · {{counts}} tamamlanmış sayım · ayarlar dahil",
     "saveSomewhere": "Dosyayı Files, Drive veya harici depolama gibi kontrolünüzdeki bir yere kaydedin.",
     "share": "Yedek dosyasını paylaş",
     "errors": {
       "short": "En az {{n}} karakter kullanın.",
       "mismatch": "Şifreler eşleşmiyor."
-    }
+    },
+    "settingsIncluded": "ayarlar dahil"
   },
   "restore": {
     "title": "TillCount'u geri yükle",
@@ -758,12 +758,10 @@
     "ready": "Geri yüklemeye hazır",
     "createdVerified": "{{date}} tarihinde oluşturuldu · yedek doğrulandı",
     "products": "Ürünler",
-    "productsLine": "{{n}} ürün · barkodlar dahil",
     "history": "Sayım geçmişi",
     "historyLine_one": "{{n}} tamamlanmış sayım",
     "historyLine_other": "{{n}} tamamlanmış sayım",
     "suppliersLocations": "Tedarikçiler ve konumlar",
-    "suppliersLocationsLine": "{{s}} tedarikçi · {{l}} konum",
     "settings": "Ayarlar",
     "settingsLine": "Sayım, sipariş, birim ve biçimler",
     "settingsNone": "Dahil değil",
@@ -771,7 +769,6 @@
     "replacesBody": "Aşamalı geri yükleme, değişim tamamlanana kadar mevcut verileri korur.",
     "restore": "Yedeği geri yükle",
     "readyTitle": "Verileriniz hazır",
-    "completeLine": "{{products}} ürün · {{counts}} tamamlanmış sayım · ayarlar geri yüklendi",
     "completeBody": "TillCount, geri yüklenen verileri başarıyla yeniden açtı. Önceki verileriniz yalnızca doğrulama tamamlandıktan sonra değiştirildi.",
     "errors": {
       "too-large": "Dosya çok büyük.",
@@ -786,7 +783,9 @@
       "empty-backup": "Yedek, hiçbir TillCount verisi içermiyor.",
       "rolled-back": "Geri yükleme tamamlanamadı. Önceki verileriniz değişmedi.",
       "rollback-failed": "Geri yükleme tamamlanamadı. Otomatik kurtarmayı tamamlamak için TillCount'u yeniden başlatın."
-    }
+    },
+    "settingsRestored": "ayarlar geri yüklendi",
+    "barcodesIncluded": "barkodlar dahil"
   },
   "data": {
     "yourData": "Verileriniz",
@@ -801,7 +800,14 @@
     "exportReports": "Raporları dışa aktar",
     "exportReportsBody": "Sayım ve sipariş PDF/CSV",
     "offlineTitle": "Çevrimdışı",
-    "offlineBody": "İşletme verileriniz, siz dışa aktarıp paylaşmadıkça bu cihazda kalır."
+    "offlineBody": "İşletme verileriniz, siz dışa aktarıp paylaşmadıkça bu cihazda kalır.",
+    "removeSample": "Örnek ürünleri kaldır",
+    "removeSampleBody": "Yalnızca işaretli örnek kayıtları siler",
+    "removeSampleTitle": "Örnek ürünler kaldırılsın mı?",
+    "removeSampleConfirmBody": "Örnek ürünler, örnek sayımları ve örnek favorileri silinir. Kendi ürünleriniz, sayımlarınız ve geçmişiniz olduğu gibi kalır.",
+    "removeSampleConfirm": "Örnekleri kaldır",
+    "removeSampleOpenCount": "Önce açık örnek sayımı bitirin veya silin.",
+    "sampleRemoved": "Örnek ürünler kaldırıldı."
   },
   "more": {
     "title": "Ayarlar ve veriler",
@@ -1023,9 +1029,9 @@
       "h4": "Destek",
       "p4": "Destek mesajlarında yedekleme şifreleri veya gereksiz özel işletme verileri göndermeyin.",
       "h5": "Kamera",
-      "p5": "Kamera yalnızca barkod tarayıcısı açıkken, barkod okumak için kullanılır. Hiçbir fotoğraf veya video saklanmaz ya da gönderilmez.",
+      "p5": "Kamera yalnızca barkod tarayıcı açıkken barkod okumak için kullanılır. Barkodlar cihazınızda Google ML Kit tarafından okunur. Fotoğraf veya video saklanmaz ya da gönderilmez.",
       "h6": "Takip yok",
-      "p6": "TillCount hiçbir reklam, analiz veya takip SDK'sı içermez ve kullanım verisi göndermez.",
+      "p6": "TillCount reklam, analiz veya izleme SDK'sı içermez ve verilerinizi hiçbir yere göndermez. Tarayıcının kullandığı Google ML Kit bileşeni, tarama özelliğiyle ilgili anonim performans ve kullanım ölçümlerini Google'a gönderebilir; barkodlarınızı, görüntülerinizi, ürünlerinizi veya sayımlarınızı asla göndermez.",
       "h7": "Satın alımlar",
       "p7": "TillCount Pro satın alırsanız, işlem Apple veya Google ve RevenueCat tarafından yürütülür. Bunlar satın alma bilgilerini alır, asla ürünlerinizi veya sayımlarınızı almaz.",
       "h8": "Çocuklar",
@@ -1218,7 +1224,7 @@
     },
     "restoreConfirm": {
       "title": "Geri yükleme onayı",
-      "body": "Mevcut TillCount verileri bu yedekle ({{products}} ürün, {{counts}} tamamlanmış sayım) değiştirilsin mi? Bu işlem tamamlandıktan sonra geri alınamaz.",
+      "body": "Mevcut TillCount verileri bu yedekle ({{summary}}) değiştirilsin mi? Bu işlem tamamlandıktan sonra geri alınamaz.",
       "restore": "Geri yükle"
     }
   },
@@ -1265,5 +1271,17 @@
   "capture": {
     "title": "Tara veya yaz",
     "useCode": "Bu kodu kullan"
+  },
+  "plural": {
+    "products_one": "{{n}} ürün",
+    "products_other": "{{n}} ürün",
+    "completedCounts_one": "{{n}} tamamlanmış sayım",
+    "completedCounts_other": "{{n}} tamamlanmış sayım",
+    "suppliers_one": "{{n}} tedarikçi",
+    "suppliers_other": "{{n}} tedarikçi",
+    "locations_one": "{{n}} konum",
+    "locations_other": "{{n}} konum",
+    "categories_one": "{{n}} kategori",
+    "categories_other": "{{n}} kategori"
   }
 }

@@ -4,7 +4,7 @@
  *  10 Choose category (21:283) · 11 Choose supplier (21:327) · 12 Select products (21:371) ·
  *  09 Count setup (21:251)
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { AppButton } from '../../../components/AppButton';
@@ -18,7 +18,7 @@ import { discardCount, startCount } from '../../../state/actions';
 import { resolveScope, NO_SUPPLIER_ID } from '../../../domain/countEngine';
 import { searchProducts } from '../../../domain/catalogIndex';
 import type { CountMode, CountScope, CountScopeType } from '../../../domain/types';
-import { formatInt, formatTime, relativeDay } from '../../../utils/format';
+import { dot, formatInt, formatTime, relativeDay } from '../../../utils/format';
 import { useNav, useParams } from '../../../navigation/nav';
 import { scopeTitle } from '../scopeLabel';
 import { useProGate } from '../../billing/useProGate';
@@ -137,10 +137,18 @@ const ScopePicker: React.FC<{ kind: PickerKind }> = ({ kind }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const countFor = (id: string) => (kind === 'location' ? counts.location : kind === 'category' ? counts.category : counts.supplier).get(id) ?? 0;
   const rows = useMemo(() => {
-    const r = [...list].sort((a, b) => a.name.localeCompare(b.name)).map(x => ({ id: x.id, name: x.name, n: countFor(x.id) }));
+    // Locations keep the order the shop created them in (its walking order); the rest are A–Z.
+    const r = [...list].sort((a, b) => (kind === 'location' ? a.createdAt.localeCompare(b.createdAt) : a.name.localeCompare(b.name))).map(x => ({ id: x.id, name: x.name, n: countFor(x.id) }));
     if (kind === 'supplier' && counts.noSupplier > 0) r.push({ id: NO_SUPPLIER_ID, name: t('reorder.noSupplier'), n: counts.noSupplier });
     return r;
   }, [list, counts, kind, t]);
+  // Figma opens Choose location with the first location that has products selected.
+  useEffect(() => {
+    if (kind === 'location' && selected === null) {
+      const first = rows.find(r => r.n > 0);
+      if (first) setSelected(first.id);
+    }
+  }, [kind, rows, selected]);
   const chosen = rows.find(r => r.id === selected);
   const go = () => {
     if (!chosen) return;
@@ -205,7 +213,7 @@ export const SelectProductsScreen: React.FC = () => {
         )}
         ListEmptyComponent={<Helper>{t('states.searchEmpty.body')}</Helper>}
         renderItem={({ item }) => {
-          const meta = [item.categoryId ? lookups.categories.get(item.categoryId)?.name : undefined, item.locationId ? lookups.locations.get(item.locationId)?.name : undefined].filter(Boolean).join(' · ');
+          const meta = [item.categoryId ? lookups.categories.get(item.categoryId)?.name : undefined, item.locationId ? lookups.locations.get(item.locationId)?.name : undefined].filter(Boolean).join(dot());
           return <CheckRow title={item.name} subtitle={meta || undefined} checked={picked.has(item.id)} onPress={() => toggle(item.id)} testID={`select-${item.id}`} />;
         }}
       />

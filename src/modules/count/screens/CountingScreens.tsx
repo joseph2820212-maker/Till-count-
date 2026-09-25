@@ -30,7 +30,7 @@ import { SCANNER_BARCODE_TYPES, isAcceptableBarcode, normalizeBarcode, symbology
 import { makeBarcode } from '../../../domain/productRules';
 import { newId } from '../../../domain/ids';
 import { COUNT_UNITS, type CountUnit, type Product } from '../../../domain/types';
-import { formatInt, formatQty, ltr, unitLabel } from '../../../utils/format';
+import { dot, formatInt, formatQty, ltr, unitLabel } from '../../../utils/format';
 import { useNav, useParams } from '../../../navigation/nav';
 import { scopeTitle } from '../scopeLabel';
 import { useProGate } from '../../billing/useProGate';
@@ -39,7 +39,7 @@ const DUPLICATE_WINDOW_MS = 1500;
 
 function productMeta(p: Product): string {
   const code = p.barcodes[0]?.code ?? (p.sku ? `SKU ${p.sku}` : '');
-  return [code ? ltr(code) : '', unitLabel(p.countUnit)].filter(Boolean).join(' · ');
+  return [code ? ltr(code) : '', unitLabel(p.countUnit)].filter(Boolean).join(dot());
 }
 
 function hapticOk(): void {
@@ -76,7 +76,11 @@ export const ScanCountScreen: React.FC = () => {
   const [torch, setTorch] = useState(false);
   const [manualOpen, setManualOpen] = useState(!!params?.openManual);
   const [manualCode, setManualCode] = useState('');
-  const [lastProductId, setLastProductId] = useState<string | null>(null);
+  // Re-opening a count shows the product counted last (Figma keeps it under the scanner).
+  const [lastProductId, setLastProductId] = useState<string | null>(() => {
+    const entries = session?.entries ?? [];
+    return entries.length ? entries.reduce((a, b) => (b.countedAt > a.countedAt ? b : a)).productId : null;
+  });
   const [busy, setBusy] = useState(false);
   const lastSeen = useRef<{ code: string; at: number } | null>(null);
   const labels = useCountLabels();
@@ -283,7 +287,7 @@ export const ListCountScreen: React.FC = () => {
         renderItem={({ item }) => {
           const e = entryMap.get(item.id);
           const prev = snapshots[item.id];
-          const meta = !session.blindCount && prev && !e ? `${productMeta(item)} · ${t('count.previousShort', { qty: formatQty(prev.quantityBase, item.countUnit) })}` : productMeta(item);
+          const meta = !session.blindCount && prev && !e ? `${productMeta(item)}${dot()}${t('count.previousShort', { qty: formatQty(prev.quantityBase, item.countUnit) })}` : productMeta(item);
           return (
             <ProductCountRow
               name={item.name}

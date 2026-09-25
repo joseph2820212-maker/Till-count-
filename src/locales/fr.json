@@ -62,7 +62,8 @@
     "moreOptions": "Plus d’options",
     "items": "articles",
     "noData": "Aucune donnée",
-    "csvPreviewBanner": "{{count}} lignes"
+    "csvPreviewBanner": "{{count}} lignes",
+    "listSeparator": ", "
   },
   "app": {
     "name": "TillCount"
@@ -381,7 +382,8 @@
     "units_n_one": "{{n}} unité",
     "units_n_many": "{{n}} unités",
     "units_n_other": "{{n}} unités",
-    "shareReport": "Partager le rapport"
+    "shareReport": "Partager le rapport",
+    "rowSummaryUnits": "{{products}} produits · {{units}} unités"
   },
   "favourites": {
     "new": "Nouveau favori",
@@ -427,7 +429,6 @@
     "count_one": "{{n}} produit",
     "count_many": "{{n}} produits",
     "count_other": "{{n}} produits",
-    "summary": "{{categories}} catégories · {{suppliers}} fournisseurs",
     "counted": "{{qty}} comptés",
     "archivedChip": "Archivé",
     "showArchived": "Afficher les produits archivés",
@@ -729,7 +730,6 @@
     "viewProducts": "Voir les produits importés",
     "viewProductsBody": "Ouvrir la liste des produits",
     "skippedRows": "Lignes ignorées",
-    "reviewSkipped": "Vérifier {{n}} lignes",
     "errors": {
       "empty": "Le fichier ne contient aucune ligne de produit.",
       "tooLarge": "Le fichier est trop volumineux pour être importé (5 Mo max).",
@@ -756,13 +756,13 @@
     "importantBody": "TillCount ne peut pas récupérer un mot de passe de sauvegarde oublié.",
     "create": "Créer la sauvegarde",
     "created": "Sauvegarde créée",
-    "summary": "{{products}} produits · {{counts}} inventaires terminés · réglages inclus",
     "saveSomewhere": "Enregistrez le fichier dans un endroit que vous contrôlez, comme Fichiers, Drive ou un support externe.",
     "share": "Partager le fichier de sauvegarde",
     "errors": {
       "short": "Utilisez au moins {{n}} caractères.",
       "mismatch": "Les mots de passe ne correspondent pas."
-    }
+    },
+    "settingsIncluded": "réglages inclus"
   },
   "restore": {
     "title": "Restaurer TillCount",
@@ -781,13 +781,11 @@
     "ready": "Prêt à restaurer",
     "createdVerified": "Créée le {{date}} · sauvegarde vérifiée",
     "products": "Produits",
-    "productsLine": "{{n}} produits · codes-barres inclus",
     "history": "Historique des inventaires",
     "historyLine_one": "{{n}} inventaire terminé",
     "historyLine_many": "{{n}} inventaires terminés",
     "historyLine_other": "{{n}} inventaires terminés",
     "suppliersLocations": "Fournisseurs et emplacements",
-    "suppliersLocationsLine": "{{s}} fournisseurs · {{l}} emplacements",
     "settings": "Réglages",
     "settingsLine": "Comptage, réassort, unités et formats",
     "settingsNone": "Non inclus",
@@ -795,7 +793,6 @@
     "replacesBody": "Une restauration par étapes protège les données actuelles jusqu’à ce que le remplacement soit terminé.",
     "restore": "Restaurer la sauvegarde",
     "readyTitle": "Vos données sont prêtes",
-    "completeLine": "{{products}} produits · {{counts}} inventaires terminés · réglages restaurés",
     "completeBody": "TillCount a rouvert les données restaurées avec succès. Vos données précédentes n’ont été remplacées qu’après la vérification.",
     "errors": {
       "too-large": "Le fichier est trop volumineux.",
@@ -810,7 +807,9 @@
       "empty-backup": "La sauvegarde ne contient aucune donnée TillCount.",
       "rolled-back": "La restauration n’a pas pu se terminer. Vos données précédentes sont inchangées.",
       "rollback-failed": "La restauration n’a pas pu se terminer. Redémarrez TillCount pour terminer la récupération automatique."
-    }
+    },
+    "settingsRestored": "réglages restaurés",
+    "barcodesIncluded": "codes-barres inclus"
   },
   "data": {
     "yourData": "Vos données",
@@ -825,7 +824,14 @@
     "exportReports": "Exporter les rapports",
     "exportReportsBody": "PDF/CSV d’inventaire et de réassort",
     "offlineTitle": "Hors ligne",
-    "offlineBody": "Vos données opérationnelles restent sur cet appareil sauf si vous les exportez ou partagez."
+    "offlineBody": "Vos données opérationnelles restent sur cet appareil sauf si vous les exportez ou partagez.",
+    "removeSample": "Retirer les produits d'exemple",
+    "removeSampleBody": "Supprime uniquement les données d'exemple marquées",
+    "removeSampleTitle": "Retirer les produits d'exemple ?",
+    "removeSampleConfirmBody": "Les produits d'exemple, leur inventaire d'exemple et le favori d'exemple sont supprimés. Vos propres produits, inventaires et historique restent inchangés.",
+    "removeSampleConfirm": "Retirer les exemples",
+    "removeSampleOpenCount": "Terminez ou abandonnez d'abord l'inventaire d'exemple en cours.",
+    "sampleRemoved": "Produits d'exemple retirés."
   },
   "more": {
     "title": "Réglages et données",
@@ -1047,9 +1053,9 @@
       "h4": "Support",
       "p4": "N’envoyez pas de mots de passe de sauvegarde ni de données professionnelles privées inutiles dans les messages au support.",
       "h5": "Caméra",
-      "p5": "La caméra n’est utilisée que lorsque le lecteur de codes-barres est ouvert, pour lire les codes-barres. Aucune photo ni vidéo n’est stockée ou envoyée.",
+      "p5": "L'appareil photo n'est utilisé que lorsque le lecteur de codes-barres est ouvert, pour lire les codes-barres. Les codes-barres sont lus sur votre appareil par Google ML Kit. Aucune photo ni vidéo n'est enregistrée ou envoyée.",
       "h6": "Aucun suivi",
-      "p6": "TillCount ne contient aucun SDK publicitaire, d’analyse ou de suivi et n’envoie pas de données d’utilisation.",
+      "p6": "TillCount ne contient aucun SDK de publicité, d'analyse ou de suivi et n'envoie vos données nulle part. Le composant Google ML Kit utilisé par le lecteur peut envoyer à Google des mesures anonymes de performance et d'utilisation de la fonction de scan, jamais vos codes-barres, images, produits ou inventaires.",
       "h7": "Achats",
       "p7": "Si vous achetez TillCount Pro, l’achat est traité par Apple ou Google et RevenueCat. Ils reçoivent les détails de l’achat, jamais vos produits ou inventaires.",
       "h8": "Enfants",
@@ -1242,7 +1248,7 @@
     },
     "restoreConfirm": {
       "title": "Confirmation de restauration",
-      "body": "Remplacer les données TillCount actuelles par cette sauvegarde ({{products}} produits, {{counts}} inventaires terminés) ? Ceci ne peut pas être annulé une fois terminé.",
+      "body": "Remplacer les données TillCount actuelles par cette sauvegarde ({{summary}}) ? Ceci ne peut pas être annulé une fois terminé.",
       "restore": "Restaurer"
     }
   },
@@ -1290,5 +1296,22 @@
   "capture": {
     "title": "Scanner ou saisir",
     "useCode": "Utiliser ce code"
+  },
+  "plural": {
+    "products_one": "{{n}} produit",
+    "products_many": "{{n}} produits",
+    "products_other": "{{n}} produits",
+    "completedCounts_one": "{{n}} inventaire terminé",
+    "completedCounts_many": "{{n}} inventaires terminés",
+    "completedCounts_other": "{{n}} inventaires terminés",
+    "suppliers_one": "{{n}} fournisseur",
+    "suppliers_many": "{{n}} fournisseurs",
+    "suppliers_other": "{{n}} fournisseurs",
+    "locations_one": "{{n}} emplacement",
+    "locations_many": "{{n}} emplacements",
+    "locations_other": "{{n}} emplacements",
+    "categories_one": "{{n}} catégorie",
+    "categories_many": "{{n}} catégories",
+    "categories_other": "{{n}} catégories"
   }
 }
