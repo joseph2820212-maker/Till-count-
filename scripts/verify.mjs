@@ -134,13 +134,15 @@ gate(7, 'prohibited network / analytics code', () => {
 
 gate(8, 'production billing-bypass guard', () => {
   const guard = path.join(ROOT, 'scripts', 'buildGuard.js');
-  const bad = spawnSync('node', [guard], { cwd: ROOT, env: { ...process.env, APP_VARIANT: 'production', EXPO_PUBLIC_BILLING_BYPASS: '1' }, encoding: 'utf8' });
+  // Each case starts from a clean environment, whatever variant the calling shell is set to.
+  const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(APP_VARIANT|EXPO_PUBLIC_APP_VARIANT|EXPO_PUBLIC_BILLING_BYPASS|EXPO_PUBLIC_RC_[A-Z_]+|EAS_BUILD[A-Z_]*)$/.test(k)));
+  const bad = spawnSync('node', [guard], { cwd: ROOT, env: { ...base, APP_VARIANT: 'production', EXPO_PUBLIC_BILLING_BYPASS: '1' }, encoding: 'utf8' });
   if (bad.status === 0) throw new Error('guard accepted a production build with the bypass');
-  const unset = spawnSync('node', [guard], { cwd: ROOT, env: { ...process.env, APP_VARIANT: '', EXPO_PUBLIC_BILLING_BYPASS: '1' }, encoding: 'utf8' });
+  const unset = spawnSync('node', [guard], { cwd: ROOT, env: { ...base, APP_VARIANT: '', EXPO_PUBLIC_BILLING_BYPASS: '1' }, encoding: 'utf8' });
   if (unset.status === 0) throw new Error('guard accepted the bypass with no variant (defaults to production)');
-  const review = spawnSync('node', [guard], { cwd: ROOT, env: { ...process.env, APP_VARIANT: 'review', EXPO_PUBLIC_APP_VARIANT: 'review', EXPO_PUBLIC_BILLING_BYPASS: '1', EXPO_PUBLIC_RC_ANDROID_KEY: 'goog_x' }, encoding: 'utf8' });
+  const review = spawnSync('node', [guard], { cwd: ROOT, env: { ...base, APP_VARIANT: 'review', EXPO_PUBLIC_APP_VARIANT: 'review', EXPO_PUBLIC_BILLING_BYPASS: '1', EXPO_PUBLIC_RC_ANDROID_KEY: 'goog_x' }, encoding: 'utf8' });
   if (review.status === 0) throw new Error('guard accepted a review build carrying a RevenueCat key');
-  const prod = spawnSync('node', [guard], { cwd: ROOT, env: { ...process.env, APP_VARIANT: 'production', EXPO_PUBLIC_BILLING_BYPASS: '' }, encoding: 'utf8' });
+  const prod = spawnSync('node', [guard], { cwd: ROOT, env: { ...base, APP_VARIANT: 'production', EXPO_PUBLIC_BILLING_BYPASS: '' }, encoding: 'utf8' });
   if (prod.status !== 0) throw new Error(`guard refused a clean production build: ${prod.stderr}`);
   const src = fs.readFileSync(path.join(SRC, 'modules', 'billing', 'bypass.ts'), 'utf8');
   if (!/isReviewVariant\(\)/.test(src) || !/!getRevenueCatApiKey\(\)/.test(src) || /__DEV__/.test(src)) throw new Error('runtime bypass rule weakened');

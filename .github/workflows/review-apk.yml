@@ -14,11 +14,6 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      APP_VARIANT: review
-      EXPO_PUBLIC_APP_VARIANT: review
-      EXPO_PUBLIC_BILLING_BYPASS: '1'
-      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,11 +29,14 @@ jobs:
       - run: npm run verify
       - name: Build guard (review variant)
         run: node scripts/buildGuard.js
+        env: { APP_VARIANT: review, EXPO_PUBLIC_APP_VARIANT: review, EXPO_PUBLIC_BILLING_BYPASS: '1' }
       - name: Prebuild Android (review identity)
         run: npx expo prebuild -p android --no-install
+        env: { APP_VARIANT: review, EXPO_PUBLIC_APP_VARIANT: review, EXPO_PUBLIC_BILLING_BYPASS: '1' }
       - name: Assemble release APK
         working-directory: android
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64 --no-daemon --console=plain
+        env: { APP_VARIANT: review, EXPO_PUBLIC_APP_VARIANT: review, EXPO_PUBLIC_BILLING_BYPASS: '1', NODE_ENV: production }
       - name: Name, hash and describe the APK
         id: apk
         run: |
