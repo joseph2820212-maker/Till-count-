@@ -33,3 +33,4 @@ ios/
 *.jks
 dist-web/
 artifacts/apk/
+artifacts/verify-report.json
