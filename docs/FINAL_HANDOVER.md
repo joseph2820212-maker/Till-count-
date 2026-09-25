@@ -9,7 +9,7 @@ not edited).
 | Status word | State |
 |---|---|
 | **CODE COMPLETE** | Yes. All 71 Figma screens and the 12 states are implemented. `npm run verify` is 11/11 green. |
-| **REVIEW APK READY** | Yes. `TillCount_V1_Review_016cd09.apk` (details below). |
+| **REVIEW APK READY** | Yes. `TillCount_V1_Review_0a7f9f1.apk` (details below). |
 | **DEVICE VERIFIED** | **No.** No device or emulator was available: the build container has no KVM. See HUMAN REVIEW. |
 | **STORE CONFIG PENDING** | Yes. See the OWNER DECISION BEFORE STORE and PRODUCTION CREDENTIAL items. |
 | **HUMAN LANGUAGE REVIEW PENDING** | Yes, for ar, tr, fr, es and de. |
@@ -18,19 +18,19 @@ not edited).
 
 | Field | Value |
 |---|---|
-| File | `TillCount_V1_Review_016cd09.apk` |
-| SHA-256 | `77ac29a836dbd892b5338a606cd0db8c1be47c2b3f408c12442b32d0cfe90f94` |
-| Size | 83,250,377 bytes (79.4 MiB) |
+| File | `TillCount_V1_Review_0a7f9f1.apk` |
+| SHA-256 | `292766cde38da40c4731b7f62e31cd8ba7fc084a82a069c602b12dae08dd190f` |
+| Size | 83,260,609 bytes (79.4 MiB) |
 | Package | `com.tillcount.app.review` (installs beside a production `com.tillcount.app`) |
 | Label | TillCount Review |
 | versionName / versionCode | 1.0.0 / 1 |
 | SDK | compile 36 · target 36 · min 24 |
 | ABIs | arm64-v8a, armeabi-v7a, x86_64 |
-| Built from commit | `016cd098b2c82b46cee6489686b916465aaed566` (later commits change docs only) |
-| Built | 2026-09-25T01:52:48Z on GitHub Actions, run [36082673100](https://github.com/joseph2820212-maker/Till-count-/actions/runs/36082673100) |
+| Built from commit | `0a7f9f11c09ce71efaf824b0ac70673bc02c7e59` (includes all pre-release audit fixes) |
+| Built | 2026-09-25T20:01:15Z on GitHub Actions, run [36181341918](https://github.com/joseph2820212-maker/Till-count-/actions/runs/36181341918) |
 | Profile | review: `APP_VARIANT=review`, `EXPO_PUBLIC_BILLING_BYPASS=1`, no RevenueCat keys. The build guard passed and verify was 11/11 before the build. |
 | Signing | Expo template debug keystore (review only, never for the store) |
-| Download | GitHub Actions artifact `TillCount_V1_Review_016cd09`, which holds the APK, `_SHA256.txt` and `_BUILD_INFO.txt`. It is kept for 30 days, until 2026-10-25. |
+| Download | GitHub Actions artifact `TillCount_V1_Review_0a7f9f1`, which holds the APK, `_SHA256.txt` and `_BUILD_INFO.txt`. It is kept for 30 days, until 2026-10-25. |
 
 Permissions in the APK, from `aapt2 dump badging`:
 
@@ -43,7 +43,7 @@ Permissions in the APK, from `aapt2 dump badging`:
 
 Each one is explained in `OFFLINE_PRIVACY_BOUNDARY.md` §4.
 
-Check the file after downloading: `sha256sum -c TillCount_V1_Review_016cd09_SHA256.txt`.
+Check the file after downloading: `sha256sum -c TillCount_V1_Review_0a7f9f1_SHA256.txt`.
 
 ## Evidence
 
