@@ -1,3 +1,5 @@
 {
-  "NSCameraUsageDescription": "TillCount utilise l’appareil photo pour scanner les codes-barres des produits pendant l’inventaire."
+  "ios": {
+    "NSCameraUsageDescription": "TillCount utilise l’appareil photo pour scanner les codes-barres des produits pendant l’inventaire."
+  }
 }

@@ -61,3 +61,13 @@ jobs:
           name: ${{ steps.apk.outputs.name }}
           path: out/
           retention-days: 30
+      - name: Upload build reports (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-apk-build-reports
+          path: |
+            android/app/build/reports/
+            android/app/build/intermediates/lint_vital_intermediate_text_report/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,3 +1,5 @@
 {
-  "NSCameraUsageDescription": "TillCount usa la cámara para escanear los códigos de barras de los productos mientras cuentas el stock."
+  "ios": {
+    "NSCameraUsageDescription": "TillCount usa la cámara para escanear los códigos de barras de los productos mientras cuentas el stock."
+  }
 }

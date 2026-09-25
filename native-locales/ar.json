@@ -1,3 +1,5 @@
 {
-  "NSCameraUsageDescription": "يستخدم TillCount الكاميرا لمسح الباركود الخاص بالمنتجات أثناء جرد المخزون."
+  "ios": {
+    "NSCameraUsageDescription": "يستخدم TillCount الكاميرا لمسح الباركود الخاص بالمنتجات أثناء جرد المخزون."
+  }
 }
