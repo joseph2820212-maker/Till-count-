@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { I18nManager, StyleSheet, TouchableOpacity, View, type KeyboardTypeOptions } from 'react-native';
 import { Text } from './Text';
+import i18n from '../i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { AppTextInput } from '../components/AppTextInput';
 import { normalizeArabicNumerals } from '../utils/locale';
@@ -113,7 +114,7 @@ export const SearchField: React.FC<{ value: string; onChangeText: (v: string) =>
       testID={testID}
     />
     {value ? (
-      <TouchableOpacity onPress={() => onChangeText('')} accessibilityRole="button" accessibilityLabel="clear" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+      <TouchableOpacity onPress={() => onChangeText('')} accessibilityRole="button" accessibilityLabel={i18n.t('quantity.clear')} hitSlop={{ top: 13, bottom: 13, left: 13, right: 13 }}>
         <Ionicons name="close-circle" size={18} color={tc.textFaint} />
       </TouchableOpacity>
     ) : null}

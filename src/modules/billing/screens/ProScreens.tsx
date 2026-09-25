@@ -1,5 +1,5 @@
 /** 67 TillCount Pro (29:1492) · 68 Restore purchase (29:1526) */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from '../../../ui/Text';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,12 @@ export const ProScreen: React.FC = () => {
   const [message, setMessage] = useState<{ tone: 'success' | 'danger' | 'info'; text: string } | null>(null);
   const lifetime = billing.entitlement.packages.find(p => p.key === 'lifetime' && (p.identifier === BILLING_PACKAGE_IDS.lifetime || isLifetimeProductId(p.productIdentifier))) ?? null;
 
+  // Try the store again whenever the Pro screen opens (e.g. the app started offline).
+  useEffect(() => { if (billing.status === 'unavailable' || billing.status === 'error') void billing.retry(); }, []);
+
   const buy = async () => {
+    // A purchase whose entitlement is still being recovered must not be bought twice.
+    if (billing.purchaseRecoveryPending) { setMessage({ tone: 'info', text: t('pro.recoveryPending') }); return; }
     if (!lifetime) { setMessage({ tone: 'danger', text: billing.purchaseRecoveryPending ? t('pro.recoveryPending') : t('pro.storeUnavailable') }); return; }
     setBusy(true); setMessage(null);
     try {

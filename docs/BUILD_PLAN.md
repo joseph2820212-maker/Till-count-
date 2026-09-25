@@ -21,7 +21,7 @@ VERIFIED / STORE CONFIG PENDING / HUMAN LANGUAGE REVIEW PENDING.
 | M | Onboarding, camera explainer, sample data (marked, removable) | `src/modules/onboarding` | Done |
 | N | All 71 screens and the 12 states | `src/navigation/screens.ts` | Done |
 | O | Navigation contract: 5 tab stacks, tab bar only on roots, every screen reachable | `src/navigation`, `routeMap.test.ts` | Done |
-| P | Tests: domain, storage, flows, import, backup, 71-screen walk × 6 languages, route map, adversarial, performance | `src/**/__tests__` | Done: 28 suites / 259 tests |
+| P | Tests: domain, storage, flows, import, backup, 71-screen walk × 6 languages, route map, adversarial, performance | `src/**/__tests__` | Done: 29 suites / 273 tests |
 | Q | Screenshots: EN and AR for 71 screens and 11 web-renderable states | `artifacts/screenshots` | Done: web render (D-23) |
 | R | Performance at 2,000 / 5,000 products | `performance.test.ts` | Done |
 | S | Security and offline audit | `OFFLINE_PRIVACY_BOUNDARY.md`, verify gates 7–8 | Done |

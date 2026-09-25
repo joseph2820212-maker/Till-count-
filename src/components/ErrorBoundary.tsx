@@ -4,6 +4,7 @@ import { Text } from '../ui/Text';
 import { colors } from '../theme/colors';
 import i18n from '../i18n';
 import { logError } from '../utils/errorLog';
+import { AppButton } from './AppButton';
 
 interface Props { children: React.ReactNode; }
 interface State { hasError: boolean; }
@@ -29,6 +30,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
         <View style={s.container}>
           <Text style={s.title}>{i18n.t('errors.crashTitle')}</Text>
           <Text style={s.body}>{i18n.t('errors.crashBody')}</Text>
+          {/* Try the screen tree again instead of leaving a dead screen until the app is killed. */}
+          <AppButton label={i18n.t('startup.retry')} onPress={() => this.setState({ hasError: false })} testID="error-retry" />
         </View>
       );
     }
@@ -37,7 +40,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  container: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   title:     { fontSize: 18, fontWeight: '700', color: colors.textDark, marginBottom: 8 },
   body:      { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
 });

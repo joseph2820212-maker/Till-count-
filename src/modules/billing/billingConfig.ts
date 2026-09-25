@@ -15,10 +15,11 @@ export const BILLING_PACKAGE_IDS = {
 //   EXPO_PUBLIC_RC_IOS_KEY, EXPO_PUBLIC_RC_ANDROID_KEY,
 //   EXPO_PUBLIC_RC_LIFETIME_ID_IOS, EXPO_PUBLIC_RC_LIFETIME_ID_ANDROID
 // With no key set the app runs in the offline/no-store mode (test APK: bypass).
-const env = (name: string): string => (process.env[name] ?? '').trim();
+// Each variable is read with a STATIC `process.env.EXPO_PUBLIC_…` expression: Expo inlines
+// only static reads into a release bundle (a read by computed name stays empty there).
 export const BILLING_PRODUCT_IDS = {
-  ios: { lifetime: env('EXPO_PUBLIC_RC_LIFETIME_ID_IOS') },
-  android: { lifetime: env('EXPO_PUBLIC_RC_LIFETIME_ID_ANDROID') },
+  ios: { lifetime: (process.env.EXPO_PUBLIC_RC_LIFETIME_ID_IOS ?? '').trim() },
+  android: { lifetime: (process.env.EXPO_PUBLIC_RC_LIFETIME_ID_ANDROID ?? '').trim() },
 } as const;
 
 /** The store product id of the lifetime unlock for this platform, or null when the build has none configured. */
@@ -33,8 +34,8 @@ export function isLifetimeProductId(productIdentifier: string | null | undefined
   return !!id && !!productIdentifier && productIdentifier === id;
 }
 
-const REVENUECAT_IOS_PUBLIC_KEY = env('EXPO_PUBLIC_RC_IOS_KEY');
-const REVENUECAT_ANDROID_PUBLIC_KEY = env('EXPO_PUBLIC_RC_ANDROID_KEY');
+const REVENUECAT_IOS_PUBLIC_KEY = (process.env.EXPO_PUBLIC_RC_IOS_KEY ?? '').trim();
+const REVENUECAT_ANDROID_PUBLIC_KEY = (process.env.EXPO_PUBLIC_RC_ANDROID_KEY ?? '').trim();
 
 export function getRevenueCatApiKey(): string | null {
   const key = Platform.OS === 'ios' ? REVENUECAT_IOS_PUBLIC_KEY : REVENUECAT_ANDROID_PUBLIC_KEY;

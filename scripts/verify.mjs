@@ -148,7 +148,11 @@ gate(8, 'production billing-bypass guard', () => {
   if (!/isReviewVariant\(\)/.test(src) || !/!getRevenueCatApiKey\(\)/.test(src) || /__DEV__/.test(src)) throw new Error('runtime bypass rule weakened');
   const bypassUsers = files(SRC).filter(f => /EXPO_PUBLIC_BILLING_BYPASS/.test(fs.readFileSync(f, 'utf8'))).map(rel);
   if (bypassUsers.join() !== 'src/modules/billing/bypass.ts') throw new Error(`bypass read outside bypass.ts: ${bypassUsers.join(', ')}`);
-  return 'production+bypass refused; review+RevenueCat key refused; one runtime rule';
+  // Expo inlines only static `process.env.EXPO_PUBLIC_X` reads into a release bundle; a computed
+  // read is always empty there (no store key, and the runtime bypass check would be vacuous).
+  const dynamicEnv = files(SRC).filter(f => !/__tests__/.test(f) && /process\.env\s*\[/.test(fs.readFileSync(f, 'utf8'))).map(rel);
+  if (dynamicEnv.length) throw new Error(`computed process.env read (not inlined in release): ${dynamicEnv.join(', ')}`);
+  return 'production+bypass refused; review+RevenueCat key refused; one runtime rule; static env reads only';
 });
 
 gate(9, 'navigation / screen inventory (71 routes, 5 tabs)', () => {

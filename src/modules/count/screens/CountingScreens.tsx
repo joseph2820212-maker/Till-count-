@@ -71,7 +71,7 @@ export const ScanCountScreen: React.FC = () => {
   const session = progress?.session;
   const index = useAppState(s => s.index);
   const focused = useIsFocused();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
   const [torch, setTorch] = useState(false);
   const [manualOpen, setManualOpen] = useState(!!params?.openManual);
@@ -82,21 +82,39 @@ export const ScanCountScreen: React.FC = () => {
     return entries.length ? entries.reduce((a, b) => (b.countedAt > a.countedAt ? b : a)).productId : null;
   });
   const [busy, setBusy] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
   const lastSeen = useRef<{ code: string; at: number } | null>(null);
+  const leaving = useRef(false);
   const labels = useCountLabels();
 
   useEffect(() => {
-    const sub = AppState.addEventListener('change', st => setAppActive(st === 'active'));
+    const sub = AppState.addEventListener('change', st => {
+      setAppActive(st === 'active');
+      // Camera access granted in system Settings is picked up on return (no app restart).
+      if (st === 'active') void getPermission();
+    });
     return () => sub.remove();
-  }, []);
-  useEffect(() => { if (params?.openManual) setManualOpen(true); }, [params?.openManual]);
-  useEffect(() => { if (session?.status === 'paused') void resumeCount(); }, [session?.status]);
+  }, [getPermission]);
+  useEffect(() => {
+    if (params?.openManual) { setManualOpen(true); nav.setParams({ openManual: undefined }); }
+  }, [params?.openManual]);
+  // Opening a paused count resumes it — but never while this screen is pausing it on the way out.
+  useEffect(() => { if (session?.status === 'paused' && !leaving.current) void resumeCount(); }, [session?.status]);
+  // The torch never stays on behind another screen.
+  useEffect(() => { if (!focused) setTorch(false); }, [focused]);
 
   const handleCode = useCallback(async (raw: string, symbology: string) => {
     const code = normalizeBarcode(raw, symbology);
-    if (!code || busy) return;
+    if (!code) return;
     const now = Date.now();
-    if (lastSeen.current && lastSeen.current.code === code && now - lastSeen.current.at < DUPLICATE_WINDOW_MS) return;
+    // The camera reports a code many times a second while it is in view. Every sighting
+    // refreshes the window, so a held can counts once; it counts again only after it has
+    // been out of view for the whole window.
+    if (lastSeen.current && lastSeen.current.code === code && now - lastSeen.current.at < DUPLICATE_WINDOW_MS) {
+      lastSeen.current.at = now;
+      return;
+    }
+    if (busy) return;
     lastSeen.current = { code, at: now };
     setBusy(true);
     try {
@@ -104,9 +122,10 @@ export const ScanCountScreen: React.FC = () => {
       if (r.kind === 'unknown') {
         nav.navigate('UnknownBarcode', { code: r.code, symbology });
       } else if (r.kind === 'outOfScope') {
+        setAlertOpen(true); // scanning stops while the question is open
         AppAlert.alert(t('scan.outOfScopeTitle'), t('scan.outOfScopeBody', { name: r.product.name }), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('scan.addToCount'), onPress: () => { void countAddToScope(r.product.id).then(() => { setLastProductId(r.product.id); nav.navigate('QuickQuantity', { productId: r.product.id }); }); } },
+          { text: t('common.cancel'), style: 'cancel', onPress: () => setAlertOpen(false) },
+          { text: t('scan.addToCount'), onPress: () => { setAlertOpen(false); void countAddToScope(r.product.id).then(() => { setLastProductId(r.product.id); nav.navigate('QuickQuantity', { productId: r.product.id }); }); } },
         ]);
       } else {
         hapticOk();
@@ -133,11 +152,13 @@ export const ScanCountScreen: React.FC = () => {
   const lastEntry = last ? entryFor(session, last.id) : undefined;
   const camGranted = !!permission?.granted && Platform.OS !== 'web';
   const denied = !!permission && !permission.granted && !permission.canAskAgain;
-  const scanning = camGranted && focused && appActive && !manualOpen && !busy;
+  const scanning = camGranted && focused && appActive && !manualOpen && !busy && !alertOpen;
+  // The camera runs only while this screen is visible and the app is in the foreground.
+  const cameraOn = camGranted && focused && appActive;
   const caseUnits = last ? packUnitsOf(last, 'case') : null;
   const packUnits = last ? packUnitsOf(last, 'pack') : null;
 
-  const leave = async () => { await pauseCount(); nav.replace('CountPaused'); };
+  const leave = async () => { leaving.current = true; await pauseCount(); nav.replace('CountPaused'); };
 
   return (
     <Screen
@@ -157,7 +178,7 @@ export const ScanCountScreen: React.FC = () => {
       </View>
       <ProgressBar percent={progress.percent} testID="scan-progress" />
       <View style={st.scanner} testID="scan-viewport">
-        {camGranted ? (
+        {cameraOn ? (
           <>
             <CameraView
               style={StyleSheet.absoluteFill}
@@ -249,13 +270,14 @@ export const ListCountScreen: React.FC = () => {
   const index = useAppState(s => s.index);
   const snapshots = useAppState(s => s.snapshots);
   const labels = useCountLabels();
-  useEffect(() => { if (session?.status === 'paused') void resumeCount(); }, [session?.status]);
+  const leaving = useRef(false);
+  useEffect(() => { if (session?.status === 'paused' && !leaving.current) void resumeCount(); }, [session?.status]);
 
   const entryMap = useMemo(() => new Map((session?.entries ?? []).map(e => [e.productId, e])), [session?.entries]);
   const rows = useMemo(() => (session?.productIdsSnapshot ?? []).map(id => index.byId.get(id)).filter((p): p is Product => !!p), [session?.productIdsSnapshot, index]);
 
   if (!has || !session || !progress) return null;
-  const pause = async () => { await pauseCount(); nav.replace('CountPaused'); };
+  const pause = async () => { leaving.current = true; await pauseCount(); nav.replace('CountPaused'); };
 
   return (
     <Screen

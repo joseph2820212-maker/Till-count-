@@ -51,7 +51,14 @@ export const AppAlertOverlay: React.FC = () => {
   };
 
   return (
-    <Modal transparent animationType="fade" visible statusBarTranslucent>
+    <Modal
+      transparent
+      animationType="fade"
+      visible
+      statusBarTranslucent
+      // Android back button: behaves like Cancel when there is one; a single-button alert just closes.
+      onRequestClose={() => dismiss(cancelBtn?.onPress ?? (buttons.length === 1 ? buttons[0].onPress : undefined))}
+    >
       <Pressable style={s.backdrop} onPress={() => { if (cancelBtn) dismiss(cancelBtn.onPress); }}>
         <Pressable style={s.dialog} onPress={() => {}}>
 

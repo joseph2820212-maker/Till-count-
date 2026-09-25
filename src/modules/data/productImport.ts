@@ -8,7 +8,7 @@
  * the user explicitly turns on "Update matching products". Ambiguous rows (barcode points
  * at one product, SKU at another) and duplicates inside the file always need attention.
  */
-import { normalizeBarcode, isAcceptableBarcode } from '../../domain/barcode';
+import { barcodeAliases, normalizeBarcode, isAcceptableBarcode } from '../../domain/barcode';
 import { normalizeName, normalizeSku, type CatalogIndex } from '../../domain/catalogIndex';
 import { newId, uuid } from '../../domain/ids';
 import { makeBarcode, validateProduct } from '../../domain/productRules';
@@ -243,7 +243,7 @@ export function classifyRows(rows: ImportRow[], index: CatalogIndex): RowClass[]
     if (sku) seenSku.add(sku);
     if (row.familyProductId) seenFam.add(row.familyProductId);
     if (dup) issues.push('duplicateInFile');
-    const byCode = codes.map(c => index.byBarcode.get(c)).find(Boolean);
+    const byCode = codes.flatMap(c => [c, ...barcodeAliases(c)]).map(c => index.byBarcode.get(c)).find(Boolean);
     const bySku = sku ? index.bySku.get(sku) : undefined;
     const byFam = row.familyProductId ? byFamily.get(row.familyProductId) : undefined;
     const matches = new Set([byCode, bySku, byFam].filter(Boolean) as string[]);

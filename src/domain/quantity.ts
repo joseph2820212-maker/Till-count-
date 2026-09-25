@@ -82,6 +82,8 @@ export function caseLooseTotal(
   if ((input.caseCount ?? 0) > 0 && !(caseUnits != null && caseUnits > 0)) return { ok: false, error: 'missingCaseUnits' };
   if ((input.packCount ?? 0) > 0 && !(packUnits != null && packUnits > 0)) return { ok: false, error: 'missingPackUnits' };
   if (!Number.isInteger(input.caseCount ?? 0) || !Number.isInteger(input.packCount ?? 0)) return { ok: false, error: 'invalidCount' };
+  // Loose items of a counted product are whole units (never rounded away).
+  if (!isMeasuredUnit(unit) && !Number.isInteger(input.looseCount ?? 0)) return { ok: false, error: 'invalidCount' };
   const total = (input.caseCount ?? 0) * (caseUnits ?? 0) + (input.packCount ?? 0) * (packUnits ?? 0) + (input.looseCount ?? 0);
   const rounded = roundForUnit(total, unit);
   if (validateQuantity(rounded, unit)) return { ok: false, error: 'invalidCount' };

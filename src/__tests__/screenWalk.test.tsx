@@ -30,6 +30,7 @@ jest.mock('react-native', () => ({
   Dimensions: { get: () => ({ width: 390, height: 844, scale: 2, fontScale: 1 }), addEventListener: () => ({ remove() {} }) }, useWindowDimensions: () => ({ width: 390, height: 844, scale: 2, fontScale: 1 }),
   Alert: { alert: () => {} }, Linking: { openURL: async () => {}, canOpenURL: async () => true, openSettings: async () => {} }, Keyboard: { dismiss: () => {}, addListener: () => ({ remove() {} }) },
   Animated: { Value: class { setValue() {} interpolate() { return 0; } }, timing: () => ({ start: (cb?: () => void) => cb?.() }), spring: () => ({ start: (cb?: () => void) => cb?.() }), parallel: () => ({ start: (cb?: () => void) => cb?.() }), View: 'Animated.View', Text: 'Animated.Text', createAnimatedComponent: (c: any) => c },
+  BackHandler: { addEventListener: () => ({ remove() {} }) },
   PixelRatio: { get: () => 2, roundToNearestPixel: (n: number) => n }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) }, NativeModules: {},
 }));
 const mockNav = { navigate: jest.fn(), goBack: jest.fn(), replace: jest.fn(), setParams: jest.fn(), popToTop: jest.fn(), canGoBack: () => true };

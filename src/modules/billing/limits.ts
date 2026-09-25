@@ -5,7 +5,8 @@
  *
  * PROVISIONAL caps — OWNER DECISION BEFORE STORE (docs/OWNER_DECISIONS.md OD-02).
  * A cap only blocks a NEW gated action. Existing products, counts, history, restore and
- * backup are never locked by a cap.
+ * backup are never locked by a cap. The product cap counts every real product in the
+ * catalogue, archived included, so archiving and restoring cannot get past it.
  */
 export type Tier = 'free' | 'pro';
 

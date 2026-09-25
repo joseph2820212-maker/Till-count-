@@ -128,8 +128,13 @@ describe('entries are history snapshots', () => {
     const s = setQuantity(start(), manual, L, 12, 'manual', T1);
     expect(s.entries[0].quantityBase).toBe(12);
   });
-  it('stepper never goes below zero; zero is a real count', () => {
+  it('stepper never goes below zero; zero is a real count; − on an uncounted product does nothing', () => {
     let s = stepQuantity(start(), cola, L, -1, T1);
+    expect(s.entries).toEqual([]); // a stray tap must not record 0
+    s = stepQuantity(s, cola, L, 1, T1);
+    s = stepQuantity(s, cola, L, -1, T1);
+    expect(s.entries[0].quantityBase).toBe(0); // counted, then stepped down: a real 0
+    s = stepQuantity(s, cola, L, -1, T1);
     expect(s.entries[0].quantityBase).toBe(0);
     s = stepQuantity(s, cola, L, 1, T1);
     expect(s.entries[0].quantityBase).toBe(1);

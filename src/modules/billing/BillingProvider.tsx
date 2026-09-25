@@ -61,6 +61,8 @@ export const BillingProvider: React.FC<React.PropsWithChildren> = ({ children })
       const canUseCache = isCachedEntitlementValid(cached);
       setEntitlement({
         ...cached,
+        // An expired / unverifiable cached entitlement never keeps Pro while offline.
+        isPremium: canUseCache ? cached.isPremium : false,
         packages: [],
         canPurchase: Boolean(getRevenueCatApiKey()),
         lastError: null,

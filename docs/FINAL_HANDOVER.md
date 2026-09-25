@@ -90,6 +90,35 @@ Details are in `OWNER_DECISIONS.md`.
 - **Store data-safety form:** declare Google ML Kit usage metrics from the barcode scanner
   (`OFFLINE_PRIVACY_BOUNDARY.md` §2).
 
+## Pre-release audit (25 September 2026)
+
+Five parallel reviewers covered domain and counting, storage/backup/security, import/export,
+billing/config/release, and screens/UX. Every finding was checked against the code, and a
+regression test was added where one was practical (tests: 273, suites: 29). Fixed:
+
+| Severity | Finding | Fix |
+|---|---|---|
+| Critical | RevenueCat key and product IDs were read with a computed `process.env[...]`, which Expo does not inline into a release bundle, so a store build could never sell or restore Pro | Static `process.env.EXPO_PUBLIC_*` reads, confirmed with a release Babel transform. Verify gate 8 now fails on any computed env read. |
+| High | Backup encryption used Web Crypto only, which is missing on Hermes, so **creating a backup would fail on a phone** | Salt and nonce come from `secureRandomBytes` (expo-crypto on device). Test runs with Web Crypto removed. |
+| High | An edit or Discard that arrived while Finish was saving could reopen or delete the completed count on disk | A store "closing" lock: no edit or discard is written for a count being finished. Race tests fail on the old code and pass now. |
+| High | The restore journal was one value (unreadable on Android over ~2 MB); a damaged journal was deleted and start-up carried on with half-restored data | The journal is chunked, a damaged journal is kept, and start-up fails closed. The stale transaction journal is cleared after a restore. |
+| High | Holding the camera on a barcode added +1 every 1.5 s | Every sighting restarts the duplicate window, and scanning pauses while the out-of-scope alert is open (D-33). |
+| Medium | Two quick catalogue edits could overwrite each other | Catalogue writes are serialised (import included). |
+| Medium | A restore could accept onboarding, settings or currency data the app then refuses to open, plus unknown keys | Those keys are now checked with the same validators the app uses at start-up. |
+| Medium | Import: bad or negative price, level or target values were dropped silently; an unclosed quote swallowed the file; Excel `5.01E+12` codes were accepted; rows refused at plan time still created categories and were not listed; a family ID could be reused | Each case is now an attention row, a readable error or a rollback. Refused rows are listed on Import complete. |
+| Medium | Archive, create, restore could get past the Free product cap | The cap counts archived products (D-34). |
+| Medium | An offline start with an expired cached entitlement kept Pro | Cached Pro is used only while it is still valid. |
+| Medium | Pause did not stick (the screen auto-resumed); camera access granted in Settings was not noticed; the camera and torch kept running behind other screens; "Type code" worked only once | Each one is fixed. |
+| Medium | The Android back button skipped screen back logic (pause, closing an import) | `Screen` routes the hardware back button to the same handler as the header arrow. |
+| Low | Double taps on Save for favourites, lists and barcodes; − on an uncounted item recorded 0 (D-32); a typed UPC-E and the scanned code were different products (D-35); fractional levels, packs and loose items were allowed on counted items; restored number and date formats needed a restart; the alert could not be closed with back; the crash screen had no retry | Each one is fixed. |
+
+Accepted and not changed (low):
+
+- Backup header dates are not covered by the GCM tag. They are only shown on screen; the data itself is authenticated.
+- `countSnapshots` is one document, so it reaches the Android 2 MB value limit at about 15,000 products. That is beyond the 5,000 tested.
+- Manual code entry uses a number pad, so letter-based Code 128 labels can't be typed.
+- EAN/UPC check digits are not enforced on manual entry, because shops use internal codes.
+
 ## Build notes
 
 - The Claude build container cannot reach `dl.google.com` (Google Maven), so the APK is built by

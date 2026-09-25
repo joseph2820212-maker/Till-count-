@@ -9,10 +9,11 @@ import { AppButton } from '../../components/AppButton';
 import { Card, Helper, ListRow, Screen, SectionTitle, StateCard } from '../../ui/kit';
 import { TextField } from '../../ui/fields';
 import { StateDialog } from '../../ui/overlays';
-import { flushOpenSession, loadStore, resetStoreForTests, useAppState } from '../../state/store';
+import { flushOpenSession, getState, loadStore, resetStoreForTests, useAppState } from '../../state/store';
+import { setNumberFormatOverride } from '../../utils/locale';
 import { removeSampleData } from '../onboarding/sampleData';
 import { APP_VERSION } from '../../appMeta';
-import { dot, formatDate, formatDayMonth, formatInt, ltr } from '../../utils/format';
+import { dot, formatDate, formatDayMonth, formatInt, ltr, setDateFormat } from '../../utils/format';
 import { logError } from '../../utils/errorLog';
 import { goTab, useNav, useParams } from '../../navigation/nav';
 import { pickTextFile, FileTooLargeError } from '../data/files';
@@ -27,7 +28,8 @@ export const DataBackupScreen: React.FC = () => {
   const { t } = useTranslation();
   const nav = useNav();
   const hasSamples = useAppState(st => st.products.some(p => p.isSample));
-  const sampleCountOpen = useAppState(st => !!st.openSession?.isSample);
+  // Samples can be removed only when no open count includes them.
+  const sampleCountOpen = useAppState(st => !!st.openSession && (!!st.openSession.isSample || st.openSession.productIdsSnapshot.some(id => id.startsWith('sample_'))));
   const [confirmSamples, setConfirmSamples] = useState(false);
   const [sampleNote, setSampleNote] = useState<string | null>(null);
   const removeSamples = async () => {
@@ -249,6 +251,9 @@ export const RestorePreviewScreen: React.FC = () => {
       clearRestoreSession();
       resetStoreForTests();
       await loadStore();
+      // The restored number / date formats apply straight away (not only after a restart).
+      setNumberFormatOverride(getState().settings.numberFormat);
+      setDateFormat(getState().settings.dateFormat);
       nav.popToTop();
       nav.navigate('RestoreComplete', { products: counts.products, counts: counts.completedCounts });
     } catch (e) {

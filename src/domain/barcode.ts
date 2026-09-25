@@ -74,6 +74,19 @@ export function normalizeBarcode(raw: string, symbology: BarcodeSymbology | stri
   return trimmed;
 }
 
+/**
+ * Other stored forms of the same physical code. An 8-digit code typed by hand stays 8 digits
+ * (it could be EAN-8), but the camera reports the same UPC-E label expanded to 13 digits, so
+ * an 8-digit code that is a valid UPC-E also matches its expansion.
+ */
+export function barcodeAliases(normalized: string): string[] {
+  if (/^\d{8}$/.test(normalized)) {
+    const upcA = expandUpcE(normalized);
+    if (upcA && isValidEan13('0' + upcA)) return ['0' + upcA];
+  }
+  return [];
+}
+
 export function barcodesEquivalent(a: string, b: string): boolean {
   const na = normalizeBarcode(a);
   return na !== '' && na === normalizeBarcode(b);

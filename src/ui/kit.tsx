@@ -5,9 +5,10 @@
  * the Required-States card and the 44dp keypad. Screens compose these; they do not
  * restyle them.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
-  View, TouchableOpacity, StyleSheet, I18nManager, ScrollView, type StyleProp, type ViewStyle,
+  BackHandler, View, TouchableOpacity, StyleSheet, I18nManager, ScrollView, type StyleProp, type ViewStyle,
 } from 'react-native';
 import { Text } from './Text';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +43,17 @@ interface ScreenProps {
 
 export const Screen: React.FC<ScreenProps> = ({ title, onBack, action, children, footer, keyboard, noScroll, tabRoot, testID }) => {
   const insets = useSafeAreaInsets();
+  const focused = useIsFocused();
+  // The Android back button runs the same code as the header back arrow (pause the count,
+  // close the import session…), not a bare pop that would skip it.
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+  const hasBack = !!onBack;
+  useEffect(() => {
+    if (!hasBack || !focused) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { onBackRef.current?.(); return true; });
+    return () => sub.remove();
+  }, [hasBack, focused]);
   const bottomPad = tabRoot ? GUTTER : Math.max(insets.bottom, 12) + 4;
   const content = (
     <View style={s.body}>

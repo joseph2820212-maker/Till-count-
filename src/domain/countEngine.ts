@@ -169,7 +169,10 @@ export function applyScan(
 /** Step the current quantity by ±1 base unit (never below zero). */
 export function stepQuantity(session: CountSession, product: Product, lookups: Lookups, delta: 1 | -1, now: string): CountSession {
   assertOpen(session);
-  const current = entryFor(session, product.id)?.quantityBase ?? 0;
+  const existing = entryFor(session, product.id);
+  // "−" on a product not counted yet does nothing (one stray tap must not record a 0).
+  if (!existing && delta < 0) return session;
+  const current = existing?.quantityBase ?? 0;
   const next = Math.max(0, addQuantity(current, delta, product.countUnit));
   return upsertEntry(session, buildEntry(product, lookups, next, 'keypad', now));
 }

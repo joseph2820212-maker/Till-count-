@@ -139,7 +139,12 @@ export async function loadSampleData(): Promise<void> {
 /** Remove every sample record in one transaction. Real records (and anything they reference) stay. */
 export async function removeSampleData(): Promise<void> {
   const st = getState();
-  if (st.openSession?.isSample) throw new Error('Finish or discard the sample count first.');
+  // An open count that includes sample products must be finished or discarded first
+  // (it would otherwise keep ids of products that no longer exist).
+  const sampleProductIds = new Set(st.products.filter(p => p.isSample).map(p => p.id));
+  if (st.openSession && (st.openSession.isSample || st.openSession.productIdsSnapshot.some(id => sampleProductIds.has(id)))) {
+    throw new Error('Finish or discard the open count first.');
+  }
   const products = st.products.filter(p => !p.isSample);
   const used = (key: 'categoryId' | 'supplierId' | 'locationId', id: string) => products.some(p => p[key] === id);
   const categories = st.categories.filter(c => !c.isSample || used('categoryId', c.id));

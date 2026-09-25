@@ -2,7 +2,7 @@
  * 05 Review (17:308) · 06 Results (17:348) · 18 Count history (22:447) · 19 History detail (22:489) ·
  * 20 Favourite counts (22:534) · 21 Edit favourite (22:572)
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -296,12 +296,17 @@ export const EditFavouriteScreen: React.FC = () => {
   const refOptions = (type === 'category' ? categories : type === 'supplier' ? suppliers : locations).map(r => ({ value: r.id, label: r.name }));
   const scopeTypes: CountScopeType[] = existing?.scope.type === 'selected' ? ['everything', 'category', 'supplier', 'location', 'selected'] : ['everything', 'category', 'supplier', 'location'];
 
+  const saving = useRef(false);
   const save = async () => {
+    if (saving.current) return; // a double tap must not create two favourites
     if (!name.trim()) { setError(t('favourites.nameRequired')); return; }
     if ((type === 'category' || type === 'supplier' || type === 'location') && !refId) { setError(t('favourites.chooseScope')); return; }
-    const r = await saveFavourite({ id: existing?.id, name, scope, mode, blindCount: existing?.blindCount ?? settings.blindCount, caseLooseEnabled: existing?.caseLooseEnabled ?? settings.caseLooseEnabled });
-    if (!r.ok) { setError(t('favourites.nameRequired')); return; }
-    nav.goBack();
+    saving.current = true;
+    try {
+      const r = await saveFavourite({ id: existing?.id, name, scope, mode, blindCount: existing?.blindCount ?? settings.blindCount, caseLooseEnabled: existing?.caseLooseEnabled ?? settings.caseLooseEnabled });
+      if (!r.ok) { setError(t('favourites.nameRequired')); return; }
+      nav.goBack();
+    } finally { saving.current = false; }
   };
 
   return (

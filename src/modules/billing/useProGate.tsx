@@ -11,14 +11,21 @@ import { getState } from '../../state/store';
 import { checkLimit, LIMIT_CAPS, type LimitKind } from './limits';
 import { useTier } from './useTier';
 
+/** Sample records are marked isSample AND carry a `sample_` id; anything else counts. */
+const isRealSample = (r: { id: string; isSample?: boolean }) => !!r.isSample && r.id.startsWith('sample_');
+
+/**
+ * Products that count toward the Free cap: every real product still in the catalogue,
+ * archived included — archiving does not free a slot (restoring it stays free), deleting does.
+ */
 export function realActiveProductCount(): number {
-  return getState().products.filter(p => p.status === 'active' && !p.isSample).length;
+  return getState().products.filter(p => !isRealSample(p)).length;
 }
 
 function currentCountFor(kind: LimitKind): number {
   const s = getState();
   if (kind === 'products') return realActiveProductCount();
-  if (kind === 'favourites') return s.favourites.filter(f => !f.isSample).length;
+  if (kind === 'favourites') return s.favourites.filter(f => !isRealSample(f)).length;
   return 0;
 }
 

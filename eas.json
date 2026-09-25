@@ -4,7 +4,6 @@
   },
   "build": {
     "production": {
-      "channel": "production",
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_APP_VARIANT": "production"
@@ -18,7 +17,6 @@
     },
     "review": {
       "distribution": "internal",
-      "channel": "review",
       "env": {
         "APP_VARIANT": "review",
         "EXPO_PUBLIC_APP_VARIANT": "review",

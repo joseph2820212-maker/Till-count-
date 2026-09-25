@@ -12,7 +12,7 @@
  * when none of its codes / SKU now belong to another active product (DECISIONS D-04).
  */
 import { buildCatalogIndex, normalizeName, normalizeSku } from './catalogIndex';
-import { isAcceptableBarcode, normalizeBarcode } from './barcode';
+import { barcodeAliases, isAcceptableBarcode, normalizeBarcode } from './barcode';
 import { isValidQuantity } from './quantity';
 import type { Product, ProductBarcode } from './types';
 import { COUNT_UNITS } from './types';
@@ -56,8 +56,14 @@ export function validateProduct(all: readonly Product[], candidate: Product, pre
   if (previous && previous.familyProductId !== candidate.familyProductId) errors.push({ code: 'familyIdChanged' });
   if (badMoney(candidate.costPrice)) errors.push({ code: 'badCost' });
   if (badMoney(candidate.sellingPrice)) errors.push({ code: 'badPrice' });
-  if (candidate.reorderLevel !== undefined && !isValidQuantity(candidate.reorderLevel, 'kg')) errors.push({ code: 'badReorderLevel' });
-  if (candidate.targetStock !== undefined && !isValidQuantity(candidate.targetStock, 'kg')) errors.push({ code: 'badTarget' });
+  // Levels and targets follow the product's unit: whole numbers for counted items.
+  if (candidate.reorderLevel !== undefined && !isValidQuantity(candidate.reorderLevel, candidate.countUnit)) errors.push({ code: 'badReorderLevel' });
+  if (candidate.targetStock !== undefined && !isValidQuantity(candidate.targetStock, candidate.countUnit)) errors.push({ code: 'badTarget' });
+  // A pack / case of a counted item holds a whole number of units.
+  if (candidate.countUnit === 'each') {
+    const frac = candidate.barcodes.find(b => b.role !== 'single' && !Number.isInteger(b.unitsPerBarcode));
+    if (frac) errors.push({ code: 'badUnitsPerBarcode', barcode: frac.code });
+  }
   for (const q of [candidate.caseQuantity, candidate.packQuantity]) {
     if (q !== undefined && !(Number.isInteger(q) && q > 0)) { errors.push({ code: 'badPackQuantity' }); break; }
   }
@@ -77,7 +83,7 @@ export function validateProduct(all: readonly Product[], candidate: Product, pre
       const norm = normalizeBarcode(b.code, b.symbology);
       if (seen.has(norm)) { errors.push({ code: 'duplicateBarcodeInProduct', barcode: b.code }); continue; }
       seen.add(norm);
-      const other = others.byBarcode.get(norm);
+      const other = others.byBarcode.get(norm) ?? barcodeAliases(norm).map(a => others.byBarcode.get(a)).find(Boolean);
       if (other) errors.push({ code: 'duplicateBarcode', barcode: b.code, otherProductId: other });
     }
   } else {

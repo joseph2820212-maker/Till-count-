@@ -2,7 +2,7 @@
  * 28 Categories (23:769) · 29 Category form (24:718) · 30 Suppliers (24:740) · 31 Supplier form (24:778) ·
  * 32 Locations (24:804) · 33 Location form (24:842)
  */
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppButton } from '../../../components/AppButton';
 import { AppAlert } from '../../../components/AppAlert';
@@ -63,10 +63,15 @@ const NamedForm: React.FC<{ kind: Kind }> = ({ kind }) => {
   const k = KEY[kind];
   const archived = record?.status === 'archived';
 
+  const saving = useRef(false);
   const save = async () => {
-    const r = await saveNamed(kind, { id: record?.id, name, reference });
-    if (!r.ok) { setError(t(`named.errors.${r.error}`)); return; }
-    nav.goBack();
+    if (saving.current) return;
+    saving.current = true;
+    try {
+      const r = await saveNamed(kind, { id: record?.id, name, reference });
+      if (!r.ok) { setError(t(`named.errors.${r.error}`)); return; }
+      nav.goBack();
+    } finally { saving.current = false; }
   };
   const restore = async () => {
     if (!record) return;

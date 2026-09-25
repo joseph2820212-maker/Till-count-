@@ -4,7 +4,7 @@
  * lists and a lower-cased search key per product. Built once per catalogue
  * change, never inside a render loop.
  */
-import { normalizeBarcode } from './barcode';
+import { barcodeAliases, normalizeBarcode } from './barcode';
 import type { Product } from './types';
 
 export interface CatalogIndex {
@@ -51,6 +51,7 @@ export function buildCatalogIndex(products: readonly Product[]): CatalogIndex {
     }
     idx.activeIds.push(p.id);
     for (const c of codes) if (!idx.byBarcode.has(c)) idx.byBarcode.set(c, p.id);
+    for (const c of codes) for (const a of barcodeAliases(c)) if (!idx.byBarcode.has(a)) idx.byBarcode.set(a, p.id);
     const sku = normalizeSku(p.sku);
     if (sku && !idx.bySku.has(sku)) idx.bySku.set(sku, p.id);
     push(idx.byCategory, p.categoryId, p.id);
@@ -62,7 +63,8 @@ export function buildCatalogIndex(products: readonly Product[]): CatalogIndex {
 }
 
 export function findActiveByBarcode(idx: CatalogIndex, code: string, symbology?: string): Product | null {
-  const id = idx.byBarcode.get(normalizeBarcode(code, symbology));
+  const norm = normalizeBarcode(code, symbology);
+  const id = idx.byBarcode.get(norm) ?? barcodeAliases(norm).map(a => idx.byBarcode.get(a)).find(Boolean);
   return id ? idx.byId.get(id) ?? null : null;
 }
 

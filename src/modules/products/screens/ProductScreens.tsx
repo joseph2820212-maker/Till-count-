@@ -2,7 +2,7 @@
  * 22 Products (23:507) · 23 Product detail (23:578) · 24 Add product (23:631) · 25 Edit product (23:668) ·
  * 26 Barcodes (23:705) · 27 Add barcode (23:740)
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { AppButton } from '../../../components/AppButton';
@@ -90,7 +90,7 @@ export const ProductsScreen: React.FC = () => {
             ) : null}
             {filter || archived ? (
               <ChipRow>
-                {filter ? <Chip label={t(`products.filter.${filter}`)} active onPress={() => setFilter(undefined)} testID="products-filter-chip" /> : null}
+                {filter ? <Chip label={t(`products.filter.${filter}`)} active onPress={() => { setFilter(undefined); nav.setParams({ filter: undefined }); }} testID="products-filter-chip" /> : null}
                 {archived ? <Chip label={t('products.archivedChip')} active onPress={() => setArchived(false)} /> : null}
               </ChipRow>
             ) : null}
@@ -380,14 +380,19 @@ export const AddBarcodeScreen: React.FC = () => {
   const [units, setUnits] = useState('1');
   const [capture, setCapture] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const saving = useRef(false);
 
   const save = async () => {
     const n = role === 'single' ? 1 : parseQuantityText(units);
     if (!code.trim()) { setError(t('barcodes.errors.codeRequired')); return; }
     if (role !== 'single' && !(n !== null && Number.isInteger(n) && n > 0)) { setError(t('products.errors.badUnitsPerBarcode', { code })); return; }
-    const r = await addBarcodeToProduct(productId, makeBarcode(newId('b'), code, role, n ?? 1, symbology));
-    if (!r.ok) { setError(r.errors.map(e => errorText(t, e, id => index.byId.get(id)?.name ?? '')).join('\n')); return; }
-    nav.goBack();
+    if (saving.current) return;
+    saving.current = true;
+    try {
+      const r = await addBarcodeToProduct(productId, makeBarcode(newId('b'), code, role, n ?? 1, symbology));
+      if (!r.ok) { setError(r.errors.map(e => errorText(t, e, id => index.byId.get(id)?.name ?? '')).join('\n')); return; }
+      nav.goBack();
+    } finally { saving.current = false; }
   };
 
   return (
