@@ -1,0 +1,65 @@
+name: Review APK
+# Builds the TillCount review APK (APP_VARIANT=review, billing bypass, no RevenueCat keys).
+# Output artifact: TillCount_V1_Review_<shortSHA>.apk + TillCount_V1_Review_<shortSHA>_SHA256.txt
+on:
+  push:
+    branches: ['claude/**']
+  workflow_dispatch:
+
+concurrency:
+  group: review-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP_VARIANT: review
+      EXPO_PUBLIC_APP_VARIANT: review
+      EXPO_PUBLIC_BILLING_BYPASS: '1'
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      # The same 11 gates as CI; an APK is only built from a green tree.
+      - run: npm run verify
+      - name: Build guard (review variant)
+        run: node scripts/buildGuard.js
+      - name: Prebuild Android (review identity)
+        run: npx expo prebuild -p android --no-install
+      - name: Assemble release APK
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64 --no-daemon --console=plain
+      - name: Name, hash and describe the APK
+        id: apk
+        run: |
+          SHORT=$(git rev-parse --short=7 HEAD)
+          NAME="TillCount_V1_Review_${SHORT}"
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/${NAME}.apk"
+          (cd out && sha256sum "${NAME}.apk" > "${NAME}_SHA256.txt")
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          {
+            echo "file: ${NAME}.apk"
+            echo "commit: $(git rev-parse HEAD)"
+            echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "profile: review (APP_VARIANT=review, EXPO_PUBLIC_BILLING_BYPASS=1, no RevenueCat keys)"
+            echo "size_bytes: $(stat -c %s "out/${NAME}.apk")"
+            echo "sha256: $(cut -d' ' -f1 "out/${NAME}_SHA256.txt")"
+            "$AAPT" dump badging "out/${NAME}.apk" | grep -E "^(package|sdkVersion|targetSdkVersion|uses-permission|application-label|native-code)"
+          } | tee "out/${NAME}_BUILD_INFO.txt"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: out/
+          retention-days: 30
