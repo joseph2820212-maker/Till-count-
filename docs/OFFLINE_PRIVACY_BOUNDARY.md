@@ -40,11 +40,13 @@ makes no billing network call (see `src/modules/billing/bypass.ts`).
 | `VIBRATE` | Scan feedback (can be switched off). |
 | `INTERNET` | Added by React Native and the billing SDK. Used only by the paths in sections 1–2. |
 | `com.android.vending.BILLING` | Added by the billing SDK (store purchase). |
+| `ACCESS_NETWORK_STATE` | Added by the billing SDK / React Native networking to check connectivity. Reads no data. |
+| `<package>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | AndroidX internal signature permission (Android 13+ receivers). Grants nothing to other apps. |
 
 The build blocks these permissions: `RECORD_AUDIO`, fine and coarse location, contacts,
 external storage read/write, `SYSTEM_ALERT_WINDOW` and the advertising ID (`AD_ID`), all
-listed under `blockedPermissions` in `app.json`. The permissions in the built APK are
-recorded in `docs/FINAL_HANDOVER.md`.
+listed under `blockedPermissions` in `app.json`. The permission list above is the one read from the built review APK
+(`aapt2 dump badging`, recorded in `docs/FINAL_HANDOVER.md`).
 
 ## 5. Data at rest
 

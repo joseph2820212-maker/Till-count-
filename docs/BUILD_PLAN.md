@@ -27,7 +27,7 @@ VERIFIED / STORE CONFIG PENDING / HUMAN LANGUAGE REVIEW PENDING.
 | S | Security and offline audit | `OFFLINE_PRIVACY_BOUNDARY.md`, verify gates 7–8 | Done |
 | T | Figma screen audit (71 rows) | `FIGMA_SCREEN_AUDIT.md`, verify gate 11 | Done: 0 FAIL |
 | U | `npm run verify`, 11 gates | `scripts/verify.mjs`, CI | Green |
-| V | Review APK `TillCount_V1_Review_<shortSHA>.apk` + SHA-256 | `.github/workflows/review-apk.yml` | See `FINAL_HANDOVER.md` |
+| V | Review APK `TillCount_V1_Review_016cd09.apk` + SHA-256 | `.github/workflows/review-apk.yml` | REVIEW APK READY (CI run 36082673100) |
 | W | Clean-install smoke test | Needs a device or emulator | HUMAN REVIEW |
 | X | Sample data fixture | `src/modules/onboarding/sampleData.ts` | Done |
 | Y | Code quality and git discipline (TC-00 …) | git history | Done |
