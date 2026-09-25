@@ -33,7 +33,7 @@ import { initializeLanguage } from './i18n';
 import { initCurrency } from './utils/currency';
 import { setNumberFormatOverride } from './utils/locale';
 import { setDateFormat } from './utils/format';
-import { getState, loadStore, useAppState } from './state/store';
+import { failStoreLoad, getState, loadStore, useAppState } from './state/store';
 import { recoverInterruptedRestore } from './modules/backup/backupFile';
 import { pruneExports } from './modules/data/files';
 
@@ -74,10 +74,13 @@ function Bootstrap({ onRetry }: { onRetry: () => void }) {
     if (!fontsLoaded || fontError) return;
     let cancelled = false;
     (async () => {
-      try { await recoverInterruptedRestore(); } catch { /* the store load below still fails closed */ }
+      let restoreOk = true;
+      try { await recoverInterruptedRestore(); } catch { restoreOk = false; }
       await initializeLanguage();
       await initCurrency();
-      await loadStore();
+      // An unfinished restore that could not be completed or rolled back: fail closed, never
+      // show (or let the user edit) half-restored data. Retry runs the recovery again.
+      if (restoreOk) await loadStore(); else failStoreLoad('A restore did not finish and could not be recovered.');
       const settings = getState().settings;
       setNumberFormatOverride(settings.numberFormat);
       setDateFormat(settings.dateFormat);

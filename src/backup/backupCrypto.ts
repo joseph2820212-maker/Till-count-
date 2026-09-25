@@ -11,6 +11,7 @@
  */
 import { gcm } from '@noble/ciphers/aes.js';
 import { scrypt } from '@noble/hashes/scrypt.js';
+import { secureRandomBytes } from '../utils/secureRandom';
 
 // scrypt work factor. N=2^15, r=8, p=1 (~32 MB) — a strong, one-off cost for a
 // backup passphrase that resists offline brute-force, with an on-screen spinner.
@@ -28,15 +29,9 @@ export interface EncryptedBlob {
   ciphertext: string; // base64 (AES-GCM output incl. 16-byte tag)
 }
 
+/** Salts and nonces come from the one secure source (Web Crypto, else expo-crypto on Hermes). */
 function randomBytes(n: number): Uint8Array {
-  const b = new Uint8Array(n);
-  // globalThis.crypto.getRandomValues is present in RN/Hermes (same source the
-  // recovery-key generators use). Throw loudly rather than downgrade.
-  if (!globalThis.crypto || typeof globalThis.crypto.getRandomValues !== 'function') {
-    throw new Error('No secure random source available for backup encryption.');
-  }
-  globalThis.crypto.getRandomValues(b);
-  return b;
+  return secureRandomBytes(n);
 }
 
 // ─── base64 (Uint8Array <-> string), RN-safe (no btoa/Buffer dependency) ───────

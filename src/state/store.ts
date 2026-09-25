@@ -6,7 +6,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { buildCatalogIndex, type CatalogIndex } from '../domain/catalogIndex';
-import { unitsOf, type Lookups } from '../domain/countEngine';
+import { CountSessionLockedError, unitsOf, type Lookups } from '../domain/countEngine';
 import {
   DEFAULT_SETTINGS,
   type AppSettings, type Category, type CountEntry, type CountSession, type FavouriteCount, type OnboardingState,
@@ -85,6 +85,7 @@ export function resetStoreForTests(): void {
   state = initialState();
   openWriteQueue = Promise.resolve();
   pendingOpen = undefined;
+  closing.clear();
 }
 
 export function headerOf(session: CountSession): CountSessionHeader {
@@ -131,6 +132,11 @@ export async function loadStore(): Promise<void> {
   }
 }
 
+/** Start-up could not reach a consistent state: show the storage error screen (fail closed). */
+export function failStoreLoad(message: string): void {
+  setState({ status: 'error', error: { kind: 'corrupt', message } });
+}
+
 // ─── Persistence (every write is one atomic transaction) ─────────────────────────
 
 export interface CatalogPatch { products?: Product[]; categories?: Category[]; suppliers?: Supplier[]; locations?: StockLocation[] }
@@ -154,8 +160,16 @@ export async function commitCatalog(patch: CatalogPatch, extra: TxOp[] = []): Pr
 // if several changes arrive while a write is running, only the latest is written next.
 let openWriteQueue: Promise<void> = Promise.resolve();
 let pendingOpen: CountSession | null | undefined;
+/**
+ * Counts being finished or discarded. From the moment Finish / Discard starts, no edit
+ * (scan, +/-, quantity) is accepted or written for that count, so a late edit can never
+ * put a completed count back to "open" or bring a discarded one back.
+ */
+const closing = new Set<string>();
+export function isCountClosing(id: string): boolean { return closing.has(id); }
 
 function writeOpenSession(session: CountSession): Promise<void> {
+  if (closing.has(session.id)) return Promise.resolve();
   const headers = sortSessions([headerOf(session), ...state.sessions.filter(h => h.id !== session.id)]);
   return runTransaction([
     { kind: 'collection', key: countEntriesKey(session.id), items: session.entries },
@@ -166,6 +180,7 @@ function writeOpenSession(session: CountSession): Promise<void> {
 /** Publish an open-session change immediately and persist it (coalesced). */
 export function saveOpenSession(session: CountSession): Promise<void> {
   if (session.status === 'completed') throw new Error('Use commitCompletion for a completed session.');
+  if (closing.has(session.id)) return Promise.reject(new CountSessionLockedError());
   setState({ openSession: session, sessions: sortSessions([headerOf(session), ...state.sessions.filter(h => h.id !== session.id)]) });
   pendingOpen = session;
   openWriteQueue = openWriteQueue.then(async () => {
@@ -190,28 +205,42 @@ export function flushOpenSession(): Promise<void> {
 
 /** Completion: header, entries and snapshots in ONE transaction. */
 export async function commitCompletion(session: CountSession, snapshots: Record<string, ProductCountSnapshot>): Promise<void> {
+  closing.add(session.id);
   await flushOpenSession().catch(() => undefined);
   pendingOpen = undefined;
   const headers = sortSessions([headerOf(session), ...state.sessions.filter(h => h.id !== session.id)]);
-  await runTransaction([
-    { kind: 'collection', key: countEntriesKey(session.id), items: session.entries },
-    { kind: 'collection', key: KEYS.countSessions, items: headers },
-    { kind: 'doc', key: KEYS.countSnapshots, value: snapshots },
-  ]);
+  try {
+    await runTransaction([
+      { kind: 'collection', key: countEntriesKey(session.id), items: session.entries },
+      { kind: 'collection', key: KEYS.countSessions, items: headers },
+      { kind: 'doc', key: KEYS.countSnapshots, value: snapshots },
+    ]);
+  } catch (e) {
+    closing.delete(session.id); // nothing was written: the count stays open and editable
+    throw e;
+  }
   setState({ sessions: headers, snapshots, openSession: state.openSession?.id === session.id ? null : state.openSession });
 }
 
 /** Discard the open count: removes only the unfinished session. */
 export async function commitDiscard(sessionId: string): Promise<void> {
+  // A count that is being finished can no longer be discarded (history is immutable).
+  if (closing.has(sessionId)) throw new CountSessionLockedError();
+  const target0 = state.sessions.find(h => h.id === sessionId);
+  if (target0 && target0.status === 'completed') throw new CountSessionLockedError();
+  closing.add(sessionId);
   await flushOpenSession().catch(() => undefined);
   pendingOpen = undefined;
-  const target = state.sessions.find(h => h.id === sessionId);
-  if (target && target.status === 'completed') throw new Error('A completed count cannot be discarded.');
   const headers = state.sessions.filter(h => h.id !== sessionId);
-  await runTransaction([
-    { kind: 'deleteCollection', key: countEntriesKey(sessionId) },
-    { kind: 'collection', key: KEYS.countSessions, items: headers },
-  ]);
+  try {
+    await runTransaction([
+      { kind: 'deleteCollection', key: countEntriesKey(sessionId) },
+      { kind: 'collection', key: KEYS.countSessions, items: headers },
+    ]);
+  } catch (e) {
+    closing.delete(sessionId);
+    throw e;
+  }
   setState({ sessions: headers, openSession: state.openSession?.id === sessionId ? null : state.openSession });
 }
 

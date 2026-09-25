@@ -55,3 +55,17 @@ describe('backup encryption (AES-256-GCM + scrypt)', () => {
     expect(a.ciphertext).not.toBe(b.ciphertext);
   });
 });
+
+describe('Hermes (no Web Crypto)', () => {
+  it('still encrypts and decrypts, using expo-crypto for salt and nonce', () => {
+    const saved = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true, writable: true });
+    try {
+      const { encryptString, decryptString } = require('../backupCrypto');
+      const blob = encryptString('{"data":{}}', 'correct horse battery');
+      expect(decryptString(blob, 'correct horse battery')).toBe('{"data":{}}');
+    } finally {
+      if (saved) Object.defineProperty(globalThis, 'crypto', saved);
+    }
+  });
+});

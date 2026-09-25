@@ -21,8 +21,9 @@ import { encryptString, decryptString, type EncryptedBlob } from '../../backup/b
 import { COUNT_ENTRIES_PREFIX, DEVICE_LOCAL_KEYS, KEYS, SCHEMA_VERSION } from '../../storage/keys';
 import { readCollectionFrom, StorageCorruptionError, TX_JOURNAL_KEY } from '../../storage/kv';
 import {
-  isCategory, isCountEntry, isCountSessionHeader, isFavourite, isProduct, isSnapshotMap, isStockLocation, isSupplier,
+  isCategory, isCountEntry, isCountSessionHeader, isFavourite, isOnboarding, isProduct, isSettingsDoc, isSnapshotMap, isStockLocation, isSupplier,
 } from '../../storage/schemas';
+import { SYMBOL_MAP } from '../../utils/currency';
 import { writeExport, shareUri } from '../data/files';
 
 export const BACKUP_FORMAT = 'tillcount-backup';
@@ -91,6 +92,24 @@ export async function validateData(data: Record<string, string>): Promise<Entity
       let snaps: unknown;
       try { snaps = JSON.parse(data[KEYS.countSnapshots]); } catch { throw new StorageCorruptionError(KEYS.countSnapshots, 'invalid JSON'); }
       if (!isSnapshotMap(snaps)) throw new StorageCorruptionError(KEYS.countSnapshots, 'invalid snapshots');
+    }
+    // Documents the app reads fail-closed at start-up are checked the same way here, so a
+    // restore can never leave a store the app refuses to open.
+    const doc = (key: string, ok: (v: unknown) => boolean) => {
+      if (data[key] === undefined) return;
+      let v: unknown;
+      try { v = JSON.parse(data[key]); } catch { throw new StorageCorruptionError(key, 'invalid JSON'); }
+      if (!ok(v)) throw new StorageCorruptionError(key, 'invalid shape');
+    };
+    doc(KEYS.onboarding, isOnboarding);
+    doc(KEYS.settings, isSettingsDoc);
+    if (data[KEYS.currency] !== undefined && !(data[KEYS.currency] in SYMBOL_MAP)) throw new StorageCorruptionError(KEYS.currency, 'unknown currency');
+    // Only keys TillCount owns: known documents, their chunks, and entries of listed counts.
+    const known = new Set<string>(Object.values(KEYS));
+    const entryKeys = new Set(sessions.map(h => `${COUNT_ENTRIES_PREFIX}${h.id}:v1`));
+    for (const k of Object.keys(data)) {
+      const base = k.replace(/:g[^:]+:c\d+$/, '');
+      if (!known.has(base) && !entryKeys.has(base)) throw new StorageCorruptionError(k, 'unexpected key');
     }
     if (data[KEYS.schemaVersion] !== undefined) {
       const v = Number(data[KEYS.schemaVersion]);
@@ -197,7 +216,21 @@ export function decryptBackup(inspection: BackupInspection, passphrase: string):
   })();
 }
 
-interface RestoreJournal { version: 1; state: 'prepared' | 'committed'; snapshot: [string, string][]; checksum: number }
+/**
+ * Restore journal. The pre-restore snapshot can be several MB, and Android cannot read a
+ * single AsyncStorage value over ~2 MB, so the snapshot is stored in device-local chunks:
+ * `restoreJournal` holds { version: 2, state, chunks, checksum } and the snapshot JSON is
+ * split across `restoreJournal:c<i>`. Version 1 (one value) is still read.
+ */
+interface RestoreJournal { version: 1 | 2; state: 'prepared' | 'committed'; snapshot: [string, string][]; checksum: number }
+interface JournalHeader { version: 2; state: 'prepared' | 'committed'; chunks: number; checksum: number }
+const JOURNAL_CHUNK_CHARS = 400_000;
+const journalChunkKey = (i: number) => `${RESTORE_JOURNAL_KEY}:c${i}`;
+
+/** The journal exists but cannot be read: keep it and stop (never guess, never discard it). */
+export class RestoreJournalUnreadableError extends Error {
+  constructor() { super('The restore journal could not be read.'); this.name = 'RestoreJournalUnreadableError'; }
+}
 
 function djb2(str: string): number {
   let hash = 5381;
@@ -205,14 +238,48 @@ function djb2(str: string): number {
   return hash;
 }
 
+async function writeJournal(snapshot: [string, string][]): Promise<JournalHeader> {
+  const json = JSON.stringify(snapshot);
+  const parts: [string, string][] = [];
+  for (let i = 0, c = 0; i < json.length || c === 0; i += JOURNAL_CHUNK_CHARS, c++) parts.push([journalChunkKey(c), json.slice(i, i + JOURNAL_CHUNK_CHARS)]);
+  const header: JournalHeader = { version: 2, state: 'prepared', chunks: parts.length, checksum: djb2(json) };
+  await AsyncStorage.multiSet(parts);
+  await AsyncStorage.setItem(RESTORE_JOURNAL_KEY, JSON.stringify(header)); // the header makes the journal live
+  return header;
+}
+
+async function clearJournal(): Promise<void> {
+  const keys = ((await AsyncStorage.getAllKeys()) as string[]).filter(k => k === RESTORE_JOURNAL_KEY || k.startsWith(`${RESTORE_JOURNAL_KEY}:c`));
+  if (keys.length) await AsyncStorage.multiRemove(keys);
+}
+
+/** null = no journal. Throws RestoreJournalUnreadableError when one exists but is damaged. */
 async function readJournal(): Promise<RestoreJournal | null> {
   const raw = await AsyncStorage.getItem(RESTORE_JOURNAL_KEY);
   if (!raw) return null;
   try {
-    const j = JSON.parse(raw) as RestoreJournal;
-    if (j.version !== 1 || !Array.isArray(j.snapshot) || j.checksum !== djb2(JSON.stringify(j.snapshot))) return null;
-    return j;
-  } catch { return null; }
+    const h = JSON.parse(raw) as { version?: number; state?: 'prepared' | 'committed'; snapshot?: [string, string][]; chunks?: number; checksum?: number };
+    if (h.version === 1 && Array.isArray(h.snapshot) && h.checksum === djb2(JSON.stringify(h.snapshot)) && (h.state === 'prepared' || h.state === 'committed')) {
+      return { version: 1, state: h.state, snapshot: h.snapshot, checksum: h.checksum as number };
+    }
+    if (h.version === 2 && Number.isInteger(h.chunks) && (h.chunks as number) > 0 && (h.state === 'prepared' || h.state === 'committed')) {
+      const parts = (await AsyncStorage.multiGet(Array.from({ length: h.chunks as number }, (_, i) => journalChunkKey(i)))) as [string, string | null][];
+      if (parts.some(p => p[1] === null)) throw new RestoreJournalUnreadableError();
+      const json = parts.map(p => p[1]).join('');
+      if (djb2(json) !== h.checksum) throw new RestoreJournalUnreadableError();
+      const snapshot = JSON.parse(json) as [string, string][];
+      if (!Array.isArray(snapshot)) throw new RestoreJournalUnreadableError();
+      return { version: 2, state: h.state, snapshot, checksum: h.checksum as number };
+    }
+  } catch { /* fall through */ }
+  throw new RestoreJournalUnreadableError();
+}
+
+async function markCommitted(): Promise<void> {
+  const raw = await AsyncStorage.getItem(RESTORE_JOURNAL_KEY);
+  if (!raw) return;
+  const h = JSON.parse(raw) as JournalHeader;
+  await AsyncStorage.setItem(RESTORE_JOURNAL_KEY, JSON.stringify({ ...h, state: 'committed' }));
 }
 
 /** Put back exactly the operational keys that existed before (device keys untouched). */
@@ -223,13 +290,11 @@ async function rollbackFromJournal(j: RestoreJournal): Promise<void> {
 }
 
 async function recoverInner(): Promise<'none' | 'rolledBack' | 'completed'> {
-  const raw = await AsyncStorage.getItem(RESTORE_JOURNAL_KEY);
-  if (!raw) return 'none';
-  const j = await readJournal();
-  if (!j) { await AsyncStorage.removeItem(RESTORE_JOURNAL_KEY); return 'none'; }
-  if (j.state === 'committed') { await AsyncStorage.removeItem(RESTORE_JOURNAL_KEY); return 'completed'; }
+  const j = await readJournal(); // throws (and keeps the journal) when it is damaged
+  if (!j) return 'none';
+  if (j.state === 'committed') { await clearJournal(); return 'completed'; }
   await rollbackFromJournal(j);
-  await AsyncStorage.removeItem(RESTORE_JOURNAL_KEY);
+  await clearJournal();
   return 'rolledBack';
 }
 
@@ -237,6 +302,9 @@ async function recoverInner(): Promise<'none' | 'rolledBack' | 'completed'> {
 export function recoverInterruptedRestore(): Promise<'none' | 'rolledBack' | 'completed'> {
   return withStorageKeyLock([RESTORE_LOCK, TX_LOCK], recoverInner);
 }
+
+/** Test hook: write a prepared journal exactly as a restore does (simulates a crash right after). */
+export const __writeRestoreJournal = writeJournal;
 
 /** Test hook: fail the staged write after N steps. */
 let failAfterWrite = false;
@@ -248,8 +316,8 @@ export function applyRestore(staged: StagedRestore): Promise<EntityCounts> {
     await recoverInner();
     const existing = ((await AsyncStorage.getAllKeys()) as string[]).filter(isBackupKey);
     const snapshot = ((await AsyncStorage.multiGet(existing)) as [string, string | null][]).filter((p): p is [string, string] => p[1] !== null);
-    const journal: RestoreJournal = { version: 1, state: 'prepared', snapshot, checksum: djb2(JSON.stringify(snapshot)) };
-    await AsyncStorage.setItem(RESTORE_JOURNAL_KEY, JSON.stringify(journal));
+    const header = await writeJournal(snapshot);
+    const journal: RestoreJournal = { version: 2, state: 'prepared', snapshot, checksum: header.checksum };
     const pairs = Object.entries(staged.data) as [string, string][];
     const incoming = new Set(pairs.map(p => p[0]));
     const stale = existing.filter(k => !incoming.has(k));
@@ -262,17 +330,20 @@ export function applyRestore(staged: StagedRestore): Promise<EntityCounts> {
       const stored = Object.fromEntries(((await AsyncStorage.multiGet(now)) as [string, string | null][]).filter((p): p is [string, string] => p[1] !== null));
       const check = await validateData(stored);
       if (JSON.stringify(check) !== JSON.stringify(staged.entityCounts)) throw new Error('integrity check failed');
-      await AsyncStorage.setItem(RESTORE_JOURNAL_KEY, JSON.stringify({ ...journal, state: 'committed' }));
+      await markCommitted();
     } catch {
       try {
         await rollbackFromJournal(journal);
-        await AsyncStorage.removeItem(RESTORE_JOURNAL_KEY);
+        await clearJournal();
       } catch {
         throw new RestoreError('rollback-failed', 'Restore failed and the automatic rollback could not finish. Restart TillCount to finish recovery.');
       }
       throw new RestoreError('rolled-back', 'Restore failed. Your previous data is unchanged.');
     }
-    await AsyncStorage.removeItem(RESTORE_JOURNAL_KEY).catch(() => undefined);
+    // Everything was replaced: a half-finished transaction journal from before the restore
+    // must not be replayed over the restored data at the next load.
+    await AsyncStorage.removeItem(TX_JOURNAL_KEY).catch(() => undefined);
+    await clearJournal().catch(() => undefined);
     return staged.entityCounts;
   });
 }

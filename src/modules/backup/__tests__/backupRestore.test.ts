@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   __failNextRestoreWrite, applyRestore, BACKUP_FORMAT, createBackup, decryptBackup, getBackupFileName, inspectText, isBackupKey,
-  recoverInterruptedRestore, RESTORE_JOURNAL_KEY, RestoreError,
+  recoverInterruptedRestore, RESTORE_JOURNAL_KEY, RestoreError, RestoreJournalUnreadableError, validateData, __writeRestoreJournal,
 } from '../backupFile';
 import { encryptString } from '../../../backup/backupCrypto';
 import { countSetQuantity, createProduct, finishCount, saveNamed, startCount, updateSettings } from '../../../state/actions';
@@ -151,14 +151,42 @@ describe('restore', () => {
     expect(getState().products).toHaveLength(1);
   });
 
-  it('a damaged journal is discarded without touching data', async () => {
+  it('a damaged journal fails closed: nothing is touched and the journal is kept', async () => {
     await seed();
     const before = await snapshotStore();
     await AsyncStorage.setItem(RESTORE_JOURNAL_KEY, '{"version":1,"state":"prepared","snapshot":[],"checksum":1}');
-    expect(await recoverInterruptedRestore()).toBe('none');
+    await expect(recoverInterruptedRestore()).rejects.toBeInstanceOf(RestoreJournalUnreadableError);
     const after = await snapshotStore();
+    expect(await AsyncStorage.getItem(RESTORE_JOURNAL_KEY)).not.toBeNull();
     delete before[RESTORE_JOURNAL_KEY];
+    delete after[RESTORE_JOURNAL_KEY];
     expect(after).toEqual(before);
+  });
+
+  it('a large journal is stored in chunks and a crash mid-restore still rolls back', async () => {
+    await seed();
+    // ~3 MB of history: a single value this size could not be read back on Android.
+    await AsyncStorage.setItem('tillcount:countEntries:big:v1', 'x'.repeat(3_000_000));
+    const keys = ((await AsyncStorage.getAllKeys()) as string[]).filter(isBackupKey);
+    const snapshot = ((await AsyncStorage.multiGet(keys)) as [string, string | null][]).filter((p): p is [string, string] => p[1] !== null);
+    const header = await __writeRestoreJournal(snapshot);
+    expect(header.chunks).toBeGreaterThan(1);
+    // Crash: the old data was already removed, the new data not yet written.
+    await AsyncStorage.multiRemove(keys);
+    expect(await recoverInterruptedRestore()).toBe('rolledBack');
+    expect((await AsyncStorage.getItem('tillcount:countEntries:big:v1'))?.length).toBe(3_000_000);
+    expect(await AsyncStorage.getItem(KEYS.products)).not.toBeNull();
+    expect(((await AsyncStorage.getAllKeys()) as string[]).some(k => k.startsWith(RESTORE_JOURNAL_KEY))).toBe(false);
+  });
+
+  it('a backup the app could not open is refused (bad onboarding / settings / currency / unknown key)', async () => {
+    await seed();
+    const keys = ((await AsyncStorage.getAllKeys()) as string[]).filter(isBackupKey);
+    const good = Object.fromEntries(((await AsyncStorage.multiGet(keys)) as [string, string][]));
+    await expect(validateData(good)).resolves.toBeTruthy();
+    for (const [k, v] of [[KEYS.onboarding, '{"version":2}'], [KEYS.settings, '[]'], [KEYS.currency, 'XX'], ['tillcount:unexpected:v1', '{}']] as const) {
+      await expect(validateData({ ...good, [k]: v })).rejects.toMatchObject({ code: 'invalid-payload' });
+    }
   });
 
   it('a committed journal is simply cleared at start', async () => {

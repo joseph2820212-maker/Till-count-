@@ -12,6 +12,7 @@ import { OptionSheet } from '../../../ui/overlays';
 import { tc } from '../../../theme/colors';
 import { tcType } from '../../../theme/typography';
 import { getState, useAppState, commitCatalog } from '../../../state/store';
+import { serialCatalog } from '../../../state/actions';
 import { dot, formatInt, ltr } from '../../../utils/format';
 import { logError } from '../../../utils/errorLog';
 import { goTab, useNav, useParams } from '../../../navigation/nav';
@@ -189,10 +190,14 @@ export const ImportReviewScreen: React.FC = () => {
   const run = async () => {
     setBusy(true); setFailed(false);
     try {
-      const st = getState();
-      const plan = planImport(classes, { products: st.products, categories: st.categories, suppliers: st.suppliers, locations: st.locations }, { updateMatched, allowance, now: new Date().toISOString() });
-      await commitCatalog(plan.next); // one transaction: all or nothing
-      patchImportSession({ skipped: classes.filter(c => c.kind === 'attention').map(c => c.row) });
+      // Planned and written in the catalogue queue, against the catalogue as it is at that moment.
+      const plan = await serialCatalog(async () => {
+        const st = getState();
+        const p = planImport(classes, { products: st.products, categories: st.categories, suppliers: st.suppliers, locations: st.locations }, { updateMatched, allowance, now: new Date().toISOString() });
+        await commitCatalog(p.next); // one transaction: all or nothing
+        return p;
+      });
+      patchImportSession({ skipped: [...classes.filter(c => c.kind === 'attention').map(c => c.row), ...plan.refusedRows] });
       nav.replace('ImportComplete', { added: plan.added, updated: plan.updated, skipped: plan.skipped + plan.skippedForLimit });
     } catch (e) {
       setFailed(true);

@@ -26,7 +26,7 @@ const nowIso = () => new Date().toISOString();
 
 export type ProductDraft = Omit<Product, 'id' | 'familyProductId' | 'createdAt' | 'updatedAt' | 'status'> & { status?: Product['status'] };
 
-export async function createProduct(draft: ProductDraft): Promise<{ ok: true; product: Product } | { ok: false; errors: ProductError[] }> {
+async function createProductNow(draft: ProductDraft): Promise<{ ok: true; product: Product } | { ok: false; errors: ProductError[] }> {
   const now = nowIso();
   const product: Product = { ...draft, name: draft.name.trim(), status: draft.status ?? 'active', id: newId('p'), familyProductId: uuid(), createdAt: now, updatedAt: now };
   const { products } = getState();
@@ -36,7 +36,7 @@ export async function createProduct(draft: ProductDraft): Promise<{ ok: true; pr
   return { ok: true, product };
 }
 
-export async function updateProduct(next: Product): Promise<{ ok: true; product: Product } | { ok: false; errors: ProductError[] }> {
+async function updateProductNow(next: Product): Promise<{ ok: true; product: Product } | { ok: false; errors: ProductError[] }> {
   const { products } = getState();
   const prev = products.find(p => p.id === next.id);
   if (!prev) return { ok: false, errors: [{ code: 'nameRequired' }] };
@@ -47,13 +47,13 @@ export async function updateProduct(next: Product): Promise<{ ok: true; product:
   return { ok: true, product };
 }
 
-export async function archiveProduct(id: string): Promise<void> {
+async function archiveProductNow(id: string): Promise<void> {
   const { products } = getState();
   await commitCatalog({ products: products.map(p => (p.id === id ? { ...p, status: 'archived', updatedAt: nowIso() } : p)) });
 }
 
 /** Bring an archived product back — refused if its SKU / codes now belong to another active product. */
-export async function unarchiveProduct(id: string): Promise<{ ok: true } | { ok: false; errors: ProductError[] }> {
+async function unarchiveProductNow(id: string): Promise<{ ok: true } | { ok: false; errors: ProductError[] }> {
   const { products } = getState();
   const p = products.find(x => x.id === id);
   if (!p) return { ok: false, errors: [] };
@@ -68,21 +68,21 @@ export async function unarchiveProduct(id: string): Promise<{ ok: true } | { ok:
  * Delete a product record. Completed count history is NOT touched: entries carry their
  * own copy of the product details. An open count keeps any entry already made.
  */
-export async function deleteProduct(id: string): Promise<void> {
+async function deleteProductNow(id: string): Promise<void> {
   const { products } = getState();
   await commitCatalog({ products: products.filter(p => p.id !== id) });
 }
 
-export async function addBarcodeToProduct(productId: string, barcode: ProductBarcode): Promise<{ ok: true } | { ok: false; errors: ProductError[] }> {
+async function addBarcodeToProductNow(productId: string, barcode: ProductBarcode): Promise<{ ok: true } | { ok: false; errors: ProductError[] }> {
   const p = getState().products.find(x => x.id === productId);
   if (!p) return { ok: false, errors: [] };
-  return updateProduct({ ...p, barcodes: [...p.barcodes, barcode] });
+  return updateProductNow({ ...p, barcodes: [...p.barcodes, barcode] });
 }
 
-export async function removeBarcodeFromProduct(productId: string, barcodeId: string): Promise<void> {
+async function removeBarcodeFromProductNow(productId: string, barcodeId: string): Promise<void> {
   const p = getState().products.find(x => x.id === productId);
   if (!p) return;
-  await updateProduct({ ...p, barcodes: p.barcodes.filter(b => b.id !== barcodeId) });
+  await updateProductNow({ ...p, barcodes: p.barcodes.filter(b => b.id !== barcodeId) });
 }
 
 // ─── Categories / suppliers / locations ──────────────────────────────────────
@@ -91,7 +91,7 @@ type NamedKind = 'categories' | 'suppliers' | 'locations';
 type NamedOf<K extends NamedKind> = K extends 'categories' ? Category : K extends 'suppliers' ? Supplier : StockLocation;
 const PREFIX: Record<NamedKind, string> = { categories: 'c', suppliers: 's', locations: 'l' };
 
-export async function saveNamed<K extends NamedKind>(
+async function saveNamedNow<K extends NamedKind>(
   kind: K, input: { id?: string; name: string; reference?: string },
 ): Promise<{ ok: true; record: NamedOf<K> } | { ok: false; error: NamedRecordError }> {
   const list = getState()[kind] as NamedOf<K>[];
@@ -111,12 +111,12 @@ export async function saveNamed<K extends NamedKind>(
 }
 
 /** Archive a category / supplier / location. Products keep the link; history is unchanged. */
-export async function archiveNamed(kind: NamedKind, id: string): Promise<void> {
+async function archiveNamedNow(kind: NamedKind, id: string): Promise<void> {
   const list = getState()[kind] as NamedOf<NamedKind>[];
   await commitCatalog({ [kind]: list.map(r => (r.id === id ? { ...r, status: 'archived', updatedAt: nowIso() } : r)) } as never);
 }
 
-export async function unarchiveNamed(kind: NamedKind, id: string): Promise<{ ok: true } | { ok: false; error: NamedRecordError }> {
+async function unarchiveNamedNow(kind: NamedKind, id: string): Promise<{ ok: true } | { ok: false; error: NamedRecordError }> {
   const list = getState()[kind] as NamedOf<NamedKind>[];
   const r = list.find(x => x.id === id);
   if (!r) return { ok: true };
@@ -128,13 +128,41 @@ export async function unarchiveNamed(kind: NamedKind, id: string): Promise<{ ok:
 }
 
 /** Set a product's reorder level / target stock (Edit reorder target). */
-export async function setReorderTarget(productId: string, reorderLevel: number | undefined, targetStock: number | undefined) {
+async function setReorderTargetNow(productId: string, reorderLevel: number | undefined, targetStock: number | undefined) {
   const p = getState().products.find(x => x.id === productId);
   if (!p) return { ok: false as const, errors: [] as ProductError[] };
   const next: Product = { ...p };
   if (reorderLevel === undefined) delete next.reorderLevel; else next.reorderLevel = reorderLevel;
   if (targetStock === undefined) delete next.targetStock; else next.targetStock = targetStock;
-  return updateProduct(next);
+  return updateProductNow(next);
+}
+
+
+// ─── Catalogue writes are serialised ─────────────────────────────────────────
+// Each change reads the catalogue when its turn comes, so two quick edits (archive A
+// and archive B, two saves) can never overwrite each other with a stale list.
+
+let catalogQueue: Promise<unknown> = Promise.resolve();
+export function serialCatalog<T>(fn: () => Promise<T>): Promise<T> {
+  const run = catalogQueue.then(fn, fn);
+  catalogQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+export function createProduct(...args: Parameters<typeof createProductNow>): ReturnType<typeof createProductNow> { return serialCatalog(() => createProductNow(...args)) as ReturnType<typeof createProductNow>; }
+export function updateProduct(...args: Parameters<typeof updateProductNow>): ReturnType<typeof updateProductNow> { return serialCatalog(() => updateProductNow(...args)) as ReturnType<typeof updateProductNow>; }
+export function archiveProduct(...args: Parameters<typeof archiveProductNow>): ReturnType<typeof archiveProductNow> { return serialCatalog(() => archiveProductNow(...args)) as ReturnType<typeof archiveProductNow>; }
+export function unarchiveProduct(...args: Parameters<typeof unarchiveProductNow>): ReturnType<typeof unarchiveProductNow> { return serialCatalog(() => unarchiveProductNow(...args)) as ReturnType<typeof unarchiveProductNow>; }
+export function deleteProduct(...args: Parameters<typeof deleteProductNow>): ReturnType<typeof deleteProductNow> { return serialCatalog(() => deleteProductNow(...args)) as ReturnType<typeof deleteProductNow>; }
+export function addBarcodeToProduct(...args: Parameters<typeof addBarcodeToProductNow>): ReturnType<typeof addBarcodeToProductNow> { return serialCatalog(() => addBarcodeToProductNow(...args)) as ReturnType<typeof addBarcodeToProductNow>; }
+export function removeBarcodeFromProduct(...args: Parameters<typeof removeBarcodeFromProductNow>): ReturnType<typeof removeBarcodeFromProductNow> { return serialCatalog(() => removeBarcodeFromProductNow(...args)) as ReturnType<typeof removeBarcodeFromProductNow>; }
+export function archiveNamed(...args: Parameters<typeof archiveNamedNow>): ReturnType<typeof archiveNamedNow> { return serialCatalog(() => archiveNamedNow(...args)) as ReturnType<typeof archiveNamedNow>; }
+export function unarchiveNamed(...args: Parameters<typeof unarchiveNamedNow>): ReturnType<typeof unarchiveNamedNow> { return serialCatalog(() => unarchiveNamedNow(...args)) as ReturnType<typeof unarchiveNamedNow>; }
+export function setReorderTarget(...args: Parameters<typeof setReorderTargetNow>): ReturnType<typeof setReorderTargetNow> { return serialCatalog(() => setReorderTargetNow(...args)) as ReturnType<typeof setReorderTargetNow>; }
+export function saveNamed<K extends NamedKind>(
+  kind: K, input: { id?: string; name: string; reference?: string },
+): Promise<{ ok: true; record: NamedOf<K> } | { ok: false; error: NamedRecordError }> {
+  return serialCatalog(() => saveNamedNow(kind, input));
 }
 
 // ─── Counting ────────────────────────────────────────────────────────────────
@@ -215,12 +243,15 @@ export async function resumeCount(): Promise<void> {
 }
 
 let completing: Promise<CountSession> | null = null;
+let lastCompleted: CountSession | null = null;
 
 /** Finish the open count. Double taps share one completion; a second call after it finished is a no-op. */
 export function finishCount(): Promise<CountSession> {
   if (completing) return completing;
   const run = (async () => {
     const st = getState();
+    // A late second tap after the count finished returns the same result (no error, no second row).
+    if (!st.openSession && lastCompleted) return lastCompleted;
     const session = requireOpen();
     const { session: completed, snapshots, alreadyCompleted } = completeSession(session, st.snapshots, nowIso());
     if (alreadyCompleted) return completed;
@@ -233,6 +264,7 @@ export function finishCount(): Promise<CountSession> {
     }
     const done: CountSession = { ...completed, attentionAtCompletion: attention };
     await commitCompletion(done, snapshots);
+    lastCompleted = done;
     return done;
   })();
   completing = run;

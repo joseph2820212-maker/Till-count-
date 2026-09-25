@@ -5,7 +5,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  archiveProduct, countClear, countScan, countSetQuantity, createProduct, finishCount, startCount, updateSettings,
+  archiveProduct, countClear, countScan, countSetQuantity, createProduct, discardCount, finishCount, startCount, updateSettings,
 } from '../actions';
 import { flushOpenSession, getState, loadStore, resetStoreForTests } from '../store';
 import { makeBarcode } from '../../domain/productRules';
@@ -113,3 +113,41 @@ describe('sample data never mixes with real data', () => {
     expect(st.snapshots[real.id].quantityBase).toBe(4);
   });
 });
+
+describe('races with Finish', () => {
+  it('an edit that arrives while Finish is saving never reopens the completed count', async () => {
+    const cola = await product('Cola', '5000112637922');
+    await startCount({ scope: { type: 'everything' }, mode: 'list', blindCount: false, caseLooseEnabled: false });
+    await countSetQuantity(cola.id, 7, 'manual');
+    const finishing = finishCount();
+    const late = countSetQuantity(cola.id, 9, 'manual').then(() => 'saved', () => 'refused');
+    await finishing;
+    expect(await late).toBe('refused');
+    await reopenApp();
+    const st = getState();
+    expect(st.openSession).toBeNull();
+    expect(st.sessions.filter(s => s.status === 'completed')).toHaveLength(1);
+    expect(st.snapshots[cola.id].quantityBase).toBe(7);
+  });
+
+  it('Discard pressed while Finish is saving cannot delete the completed count', async () => {
+    const cola = await product('Cola', '5000112637922');
+    await startCount({ scope: { type: 'everything' }, mode: 'list', blindCount: false, caseLooseEnabled: false });
+    await countSetQuantity(cola.id, 7, 'manual');
+    const finishing = finishCount();
+    const discard = discardCount().then(() => 'discarded', () => 'refused');
+    await finishing;
+    expect(await discard).toBe('refused');
+    await reopenApp();
+    expect(getState().sessions.filter(s => s.status === 'completed')).toHaveLength(1);
+  });
+
+  it('two catalogue edits started together both land', async () => {
+    const a = await product('A', '5000112637922');
+    const b = await product('B', '036000291452');
+    await Promise.all([archiveProduct(a.id), archiveProduct(b.id)]);
+    await reopenApp();
+    expect(getState().products.filter(p => p.status === 'archived').map(p => p.name).sort()).toEqual(['A', 'B']);
+  });
+});
+
